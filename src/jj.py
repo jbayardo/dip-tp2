@@ -246,16 +246,16 @@ def huffman(dct_matrix_dc):
     "Compress a list of numbers using Huffman coding."
     # Count frequencies
     d = {}
-    for v in dct_matrix_dc:
-        d[v] = d.get(v, 0) + 1
+    for x in dct_matrix_dc:
+        d[x] = d.get(x, 0) + 1
 
     # Build Huffman tree
-    q = [(v, k) for (k, v) in d.items()]
+    q = [(freq, x) for (x, freq) in d.items()]
     heapq.heapify(q)
     while len(q) > 1:
-        v1, k1 = heapq.heappop(q)
-        v2, k2 = heapq.heappop(q)
-        heapq.heappush(q, [v1 + v2, [k1, k2]])
+        freq1, tree1 = heapq.heappop(q)
+        freq2, tree2 = heapq.heappop(q)
+        heapq.heappush(q, [freq1 + freq2, [tree1, tree2]])
     huff_tree = q[0][1]
 
     # Build Huffman table

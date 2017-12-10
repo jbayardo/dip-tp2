@@ -1,0 +1,60 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+
+\title{
+  Introducci\'on al procesamiento digital de im\'agenes \\
+  {\bf TP 3: Compresi\'on}
+}
+\author{
+  Pablo Barenbaum \\
+  Juli\'an Bayardo
+}
+\date{}
+
+\newcommand{\TODO}[1]{\textcolor{red}{TODO: #1}}
+
+\begin{document}
+\maketitle
+
+\section{Introducción}
+
+Este TP consiste en implementar una variante simplificada del método
+de compresión JPEG para imágenes digitales.
+
+El método JPEG proviene de un estándar especificado por el comité homónimo,
+que data de fines de la década de 1980.
+La variante simplificada que se implementa en este trabajo
+dista mucho de la complejidad del estándar oficial.
+Lo que se implementa es un prototipo minimal,
+destinado a entender y poner a prueba sus mecanismos.
+
+Una característica central del método de compresión JPEG es que es {\em lossy},
+es decir, con pérdida de información,
+lo que resulta en altas tasas de compresión,
+con el costo aparejado de reducir la calidad de la imagen.
+El componente central del método es la
+transformada discreta del coseno (DCT), que representa la imagen
+como una matriz de coeficientes en una base de funciones periódicas
+(cosenos).
+A continuación, los valores de estos coeficientes se truncan:
+esta es la única etapa {\em lossy} del método.
+Esta transformación es la que permite obtener altas tasas de compresión,
+aplicando posteriormente otros métodos de compresión conocidos
+(sin pérdida de información) tales como {\em Huffman coding}
+o {\em arithmetic coding}.
+
+\section{Implementación}
+
+\TODO{TODO}
+
+\section{Experimentación}
+
+\TODO{TODO}
+
+\section{Conclusiones}
+
+\TODO{TODO}
+
+\end{document}
+
