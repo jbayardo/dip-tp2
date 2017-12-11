@@ -124,7 +124,12 @@ class HuffmanTree(object):
         return node.symbol
 
 
-class ChunkProcessor(object):
+class ImageProcessor(object):
+    def apply(self, image):
+        raise NotImplementedError()
+
+
+class ChunkProcessor(ImageProcessor):
     def __init__(self, chunk_size=8):
         self.image = None
         self.height = None
@@ -188,7 +193,7 @@ class GreyscaleEncoder(Codec):
         return image
 
     def apply(self, image):
-        assert image.dtype == np.uint8
+        # TODO: assert image.dtype == np.uint8
 
         image = self._into_int_range(image)
         self._processed_image = np.zeros_like(image, dtype=np.double)
@@ -211,6 +216,8 @@ class GreyscaleDecoder(Codec):
         return image
 
     def apply(self, image):
+        assert image.dtype == np.uint8
+
         self._processed_image = np.zeros_like(image)
         super().apply(image)
         self._processed_image = self._into_uint_range(self._processed_image)
@@ -395,6 +402,76 @@ class CompressingTableGreyscaleEncoder(TableGreyscaleEncoder):
         return lengths_of_runs, symbols
 
 
+class YCbCrSubsamplingEncoder(ImageProcessor):
+    def __init__(self, processors, J, a, b, Alpha = None):
+        assert J is not None
+        assert a is not None
+        assert b is not None
+        assert 'Y' in processors
+        assert 'Cb' in processors
+        assert 'Cr' in processors
+
+        self._processors = processors
+        self._J = J
+        self._a = a
+        self._b = b
+        self._Alpha = Alpha
+
+    @property
+    def subsample(self):
+        if self._Alpha is None:
+            return self._J, self._a, self._b
+        return self._J, self._a, self._b, self._Alpha
+
+    @staticmethod
+    def rgb2ycbcr(im):
+        xform = np.array([[.299, .587, .114], [-.1687, -.3313, .5], [.5, -.4187, -.0813]])
+        ycbcr = im.dot(xform.T)
+        ycbcr[:, :, [1, 2]] += 128
+        return np.uint8(ycbcr)
+
+    @staticmethod
+    def ycbcr2rgb(im):
+        xform = np.array([[1, 0, 1.402], [1, -0.34414, -.71414], [1, 1.772, 0]])
+        rgb = im.astype(np.float)
+        rgb[:, :, [1, 2]] -= 128
+        return np.uint8(rgb.dot(xform.T))
+
+    def chroma_subsample(self, image):
+        # TODO: implement...
+        return image
+
+    def apply(self, image):
+        assert 3 <= image.shape[2] <= 4
+        assert image.shape[2] == 3 or 'A' in self._processors
+
+        ycbcr = YCbCrSubsamplingEncoder.rgb2ycbcr(image[:, :, :3])
+
+        Y = ycbcr[:,:,0]
+        Y = self._processors['Y'].apply(Y)
+
+        Cb_subsampled = self.chroma_subsample(ycbcr[:,:,1])
+        Cb_subsampled = self._processors['Cb'].apply(Cb_subsampled)
+
+        Cr_subsampled = self.chroma_subsample(ycbcr[:,:,2])
+        Cr_subsampled = self._processors['Cr'].apply(Cr_subsampled)
+
+        A_subsampled = None
+        if image.shape[2] == 4:
+            A_subsampled = self.chroma_subsample(image[:,:,3])
+            A_subsampled = self._processors['A'].apply(A_subsampled)
+
+        return {
+            'width': image.shape[0],
+            'height': image.shape[1],
+            'subsample': self.subsample,
+            'Y': Y,
+            'Cb': Cb_subsampled,
+            'Cr': Cr_subsampled,
+            'A': A_subsampled
+        }
+
+
 if __name__ == '__main__':
     table = np.array([[17, 18, 24, 47, 99, 128, 192, 256],
                       [18, 21, 26, 66, 99, 192, 256, 512],
@@ -419,15 +496,20 @@ if __name__ == '__main__':
 
     table = 1 * np.ones_like(table)
 
-    # TODO: esto tendria que ser un buen compresor, hay que usar una tabla copada.
+    # TODO: esto tendria que ser un buen compresor, hay que usar una tabla copada. Esta tabla flashea fuerte.
     translator = HuffmanTree.from_weight_dictionary({4: 54})
 
     encoder = CompressingTableGreyscaleEncoder(translator, table)
     decoder = DecompressingTableGreyscaleDecoder(translator, table)
 
-    lena = ski.io.imread('data/test/barbara.png')
+    color = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp1\\data\\color\\1908iv.png")
+    rr = YCbCrSubsamplingEncoder([])
+    rr.apply(color)
+
+    lena = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp1\\data\\test\\barbara.png")
     encoded, compressed = encoder.apply(lena)
     decoded = decoder.apply(compressed)
 
     ski.io.imshow(decoded)
     plt.show()
+
