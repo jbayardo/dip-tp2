@@ -309,9 +309,91 @@ Comprimida ($B = 32$)
 {\bf Blocking effect}
 \end{center}
 
+Contemplamos la posibilidad de que el {\em blocking effect} se diera
+únicamente como resultado de la cuantización del coeficiente DC.
+Para ello analizamos qué sucedería si se aplicara una variante del
+método de compresión en la que el coeficiente DC de cada bloque
+no se ve afectado por la cuantización. Las imágenes resultantes se
+muestran a continuación:
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+Original ($200 \times 200$)
+&
+Comprimida ($B = 8$)
+&
+Comprimida ($B = 32$)
+\\
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking.png}
+&
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking_notrunc_b8.png}
+&
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking_notrunc_b32.png} \\
+\hline
+\end{tabular}\\
+{\bf Blocking effect con el coeficiente DC no afectado por la etapa de cuantización}
+\end{center}
+
+Puede apreciarse que la cuantización del coeficiente DC tiene un efecto
+notable sobre el aspecto visual de los bloques: en particular, si el
+coeficiente DC se cuantiza, el valor de gris promedio de cada bloque
+no coincide con el valor de gris promedio original, sino que presenta
+irregularidades.
+Sin embargo, la cuantización del coeficiente DC claramente {\bf no} es el
+único factor que desencadena el {\em blocking effect}, ya que los
+límites entre bloques también son apreciables en las imágenes que
+se obtienen sin hacer dicha cuantización.
+
+\subsection{Comprobación del {\em peak signal-to-noise ratio}}
+
+Se estudió el comportamiento del
+{\em peak signal-to-noise ratio} (PSNR) sobre imágenes
+comprimidas.
+El PSNR es una medida, expresada en decibeles,
+de la fidelidad de una imagen $I$ de tamaño $N \times M$,
+que se encuentra posiblemente afectada por ruido,
+con respecto a una imagen de referencia $I^{(0)}$.
+Se calcula como sigue, a partir del error cuadrático medio (MSE):
+\[
+  \begin{array}{rcl}
+    \mathsf{PSNR} & = & 20 \log_{10}(255) - 10 \log_{10}(\mathsf{MSE}) \\
+    \mathsf{MSE} & = & \sum_{i=0}^{N-1} \sum_{j=0}^{M-1} (I_{ij} - I^{(0)}_{ij})^2
+  \end{array}
+\]
+Un mayor valor de PSNR representa mayor fidelidad en la representación.
+Los valores típicos rondan los $20$--$50$ dB.
+\bigskip
+
+Para verificar el PSNR se realizó el siguiente experimento:
+se generaron 128 imágenes de $256 \times 256$.
+Para la $k$-ésima imagen, los píxeles toman valores de gris
+generados con una distribución aleatoria uniforme
+en el rango $[128 - k, 128 + k)$.
+Así, en la primera imagen ($k = 1$)
+los píxeles
+toman valores de gris entre 127 y 128,
+y en la última imagen ($k = 8$)
+los píxeles
+toman valores de gris entre 0 y 255
+(de tal manera que, a mayor $k$, hay mayor variabilidad
+en los valores).
+Se espera que la fidelidad obtenida por el compresor
+sea mejor para valores de $k$ más chicos y peor para valores
+de $k$ más grandes. Es decir, el PSNR debería decrecer a
+medida que crece $k$.
+
+En la siguiente imagen se muestra el valor del PSNR en función
+de $k$. Podemos ver que el comportamiento es en efecto el esperado:
+
+\begin{center}
+\includegraphics[width=8cm]{../imgs/output/test_psnr/k_vs_psnr.png}
+\end{center}
 
 \newpage
-\subsection{Variación del tamaño de bloque}
+\subsection{Variación de los parámetros}
+
+\subsubsection{Variación del tamaño de bloque}
 
 Para estudiar la variación del tamaño de bloque, se ejecutó el
 algoritmo sobre las diez imágenes de prueba con el
@@ -339,7 +421,7 @@ en $B = 8$.
 \TODO{TODO}
 
 \newpage
-\subsection{Variación del factor de cuantización}
+\subsubsection{Variación del factor de cuantización}
 
 Para estudiar la variación del factor de cuantización, se ejecutó el
 algoritmo sobre las diez imágenes de prueba con el
@@ -366,7 +448,7 @@ el método de compresión es más {\em lossy}.
 \TODO{TODO}
 
 \newpage
-\subsection{Variación del umbral de cuantización}
+\subsubsection{Variación del umbral de cuantización}
 
 Para estudiar la variación del umbral de cuantización, se ejecutó el
 algoritmo sobre las diez imágenes de prueba con el
