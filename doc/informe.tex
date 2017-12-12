@@ -3,6 +3,8 @@
 \usepackage{xcolor}
 \usepackage{geometry}
 \usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[spanish]{babel}
 
 \newcommand{\set}[1]{\{#1\}}
 
@@ -20,6 +22,7 @@
 
 \begin{document}
 \maketitle
+\tableofcontents
 
 \section{Introducción}
 
@@ -50,73 +53,348 @@ o {\em arithmetic coding}.
 
 \section{Implementación}
 
-\TODO{TODO}
+El método de compresión se implementó en Python, utilizando
+las bibliotecas
+\texttt{numpy} para hacer operaciones de matrices,
+\texttt{scipy} para calcular la DCT,
+y \texttt{skimage} y \texttt{PIL} para manipular imágenes.
+
+\subsection{Compresión de imágenes en escala de gris}
+
+El método de compresión para imágenes en escala de gris
+depende de tres parámetros numéricos:
+\begin{enumerate}
+\item {\bf Tamaño del bloque:} $B$. (Valor típico $B = 8$).
+\item {\bf Factor de cuantización:} $Q$. (Valor típico $Q = 50$).
+\item {\bf Umbral de cuantización:} $U$. (Valor típico $U = 2000$).
+\end{enumerate}
+Consta de las siguientes etapas. Observar que todas las etapas
+son inversibles, excepto la etapa~3~({\bf Cuantización})
+que es {\em lossy}:
+\begin{enumerate}
+\item
+  {\bf Partición en bloques.}
+  Partir la imagen en bloques de $B \times B$.
+  Si los lados de la imagen no son múltiplos de $B$,
+  se completa la imagen con negro para que lo sea. 
+\item
+  {\bf DCT.}
+  Aplicar la transformada discreta del coseno sobre cada bloque.
+  Si $I$ es una imagen de $N \times M$,
+  su transformada
+  $\mathsf{DCT}(I)$ es una imagen de $N \times M$
+  definida como sigue:
+  \[
+    \mathsf{DCT}(I)_{i,j} =
+    \alpha(i, N)
+    \cdot
+    \alpha(j, M)
+    \cdot
+    \sum_{n=0}^{N-1} \sum_{m=0}^{M-1}
+      I_{n,m} \cdot
+      \cos\left(\frac{\pi\ (2n + 1)\ i}{2N}\right) \cdot
+      \cos\left(\frac{\pi\ (2m + 1)\ j}{2M}\right)
+  \]
+  donde:
+  \[
+    \alpha(x, y) = \begin{cases}
+                     \sqrt{1/y} & \text{si $x = 0$} \\
+                     \sqrt{2/y} & \text{si $x \neq 0$} \\
+                   \end{cases}
+  \]
+  Se utilizó la implementación de la DCT provista por
+  la biblioteca \texttt{scipy}, ya que una implementación
+  manual (naïve) en Python resultaba prohibitivamente ineficiente.
+\item
+  {\bf Cuantización.}
+  En esta etapa, en lugar de la matriz de la imagen $I$,
+  se cuenta con la matriz de su transformada $\mathsf{DCT}(I)$.
+  En primer lugar, se divide a todos los coeficientes de dicha
+  matriz por el factor de cuantización $Q$:
+  \[
+    c_{ij} = \left\lfloor\frac{\mathsf{DCT}(I)_{ij}}{Q}\right\rfloor
+  \]
+  Además, se aplica el umbral $U$, obteniendo así una imagen
+  cuantizada $C$ de $N \times M$:
+  \[
+    C_{ij} =
+    \begin{cases}
+      c_{ij} & \text{si $|c_{ij}| < U$} \\
+      U      & \text{si $c_{ij} \geq U$} \\
+      -U     & \text{si $c_{ij} \leq -U$} \\
+    \end{cases}
+  \]
+\item
+  {\bf Codificación DC.}
+  Después de aplicar la DCT sobre un bloque de $B \times B$,
+  el coeficiente en la entrada $(0, 0)$ de la matriz se conoce
+  como coeficiente ``DC'', mientras que los coeficientes restantes
+  se conocen como coeficientes ``AC''.
+
+  El coeficiente DC corresponde a la frecuencia más baja, es
+  decir, el promedio de los valores de los $B^2$ píxeles en
+  dicho bloque.
+  En una imagen típica, hay una fuerte correlación entre los
+  coeficientes DC de bloques consecutivos.
+
+  Para aprovechar la redundancia dada por esta correlación,
+  en lugar de representar los coeficientes DC directamente por
+  medio de sus valores,
+  se los representa como sus diferencias consecutivas.
+  Es decir, en lugar de guardar la secuencia de coeficientes
+  DC como sigue:
+  \[
+    \mathsf{DC}_0,\ \mathsf{DC}_1,\ \mathsf{DC}_2 \hdots,\ \mathsf{DC}_n
+  \]
+  Se los representa del siguiente modo:
+  \[
+    \mathsf{DC}_0,\ (\mathsf{DC}_1 - \mathsf{DC}_0),\ (\mathsf{DC}_2 - \mathsf{DC}_1) \hdots,\ (\mathsf{DC}_n - \mathsf{DC}_{n-1})
+  \]
+  A continuación, todos los coeficientes de todos los bloques
+  se disponen en una lista.
+\item
+  {\bf Codificación Huffman}.
+  El último paso de la compresión para imágenes en escalas de
+  gris es la codificación Huffman de la lista de coeficientes.
+  La implementación respeta el método usual de Huffman.
+\end{enumerate}
 
 \section{Experimentación}
 
 Se eligieron diez imágenes de distinta naturaleza, todas ellas de
-$1000 \times 1000$ píxeles. Se muestran en la Figura~\ref{fig:imagenes_de_prueba_gris}.
+$1000 \times 1000$ píxeles. Se muestran en la Figura~\ref{fig:imagenes_de_prueba_gris} (en el Apéndice).
 
 Como conjunto de parámetros de referencia, se tomaron:
 {\bf tamaño de bloque} $B = 8$,
 {\bf factor de cuantización} $Q = 50$,
 y {\bf umbral de cuantización} $U = 2000$.
 Las imágenes resultantes se muestran en
-la Figura~\ref{fig:imagenes_de_prueba_comprimidas_8_50_2000}.
+la Figura~\ref{fig:imagenes_de_prueba_comprimidas_8_50_2000}
+(en el Apéndice).
 Este conjunto de parámetros se utiliza a modo de control,
 utilizado para comparar el comportamiento del algoritmo de compresión
 cuando se varía alguno de dichos parámetros.
+Salvo que se indique lo contrario, las imágenes se comprimen con
+estos valores para los parámetros.
 
-\begin{figure}
+\subsection{Artefactos de compresión}
+
+\subsubsection{{\em Ringing effect}}
+
+La transformada discreta del coseno, al igual que otras transformadas
+como la de Fourier, aproxima una función objetivo
+mediante una suma de funciones continuas. 
+Cuando la función objetivo presenta un cambio abrupto,
+la aproximación da lugar a un efecto de
+reverberación.
+Esto se manifiesta visualmente como un ``halo'' en los bordes.
+
+Para verificar este fenómeno, se comprimieron dos imágenes de
+$200 \times 200$.
+La primera imagen es un cuadrado con una mitad blanca y una
+mitad negra.
+La segunda imagen es un círculo blanco sobre fondo negro.
+En ambas imágenes comprimida puede apreciarse el {\em ringing effect}
+visualmente:
+los bordes claramente delimitados entre la región blanca y la
+región negra pasan a estar contaminados por un halo de
+franjas de distintos tonos de gris.
+La situación es particularmente severa en el caso del círculo.
+
+Para completar el experimento, se comprimió la primera imagen
+con $B = 100$.
+En este caso no debería manifestarse un {\em ringing effect},
+ya que la transición entre la mitad blanca y la mitad negra ocurre
+justo en el límite entre dos bloques.
+Esto efectivamente puede apreciarse en la figura de abajo.
+
+{\em Nota:} los recuadros negro que rodean a las imágenes no forman
+parte de la imagen.\\
 \begin{center}
-\begin{tabular}[t]{|ll|ll|ll|}
+\begin{tabular}{|c|c|c|}
 \hline
-img0 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img00.png} &
-img1 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img01.png} &
-img2 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img02.png} \\
+Original ($200 \times 200$)
+&
+Comprimida ($B = 8$)
+&
+Comprimida ($B = 100$)
+\\
+&
+Hay {\em ringing effect}
+&
+No hay {\em ringing effect}
+\\
 \hline
-img3 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img03.png} &
-img4 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img04.png} &
-img5 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img05.png} \\
+&
+\\
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringing200.png}}
+}
+&
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringing200_b8.png}}
+}
+&
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringing200_b100.png}}
+}
+\\
+&&
+\\
 \hline
-img6 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img06.png} &
-img7 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img07.png} &
-img8 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img08.png} \\
-\hline
-img9 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img09.png} &&&& \\
+&&
+\\
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringingcircle.png}}
+}
+&
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringingcircle_out.png}}
+}
+&
+\\
 \hline
 \end{tabular}
+{\bf Ringing effect}
 \end{center}
-\caption{Imágenes de prueba en tonos de gris}
-\label{fig:imagenes_de_prueba_gris}
-\end{figure}
 
-\begin{figure}
+\subsubsection{{\em Blocking}}
+
+Como se mencionó en la sección de implementación,
+la compresión se realiza por bloques de tamaño $B \times B$.
+Dado que los coeficientes de cada bloque se cuantiza,
+con pérdida de información, el valor promedio de gris de un bloque dado
+(correspondiente al coeficiente DC)
+no es exactamente el mismo que el original, sino que se ve afectado
+por un truncamiento.
+Además, los valores de las frecuencias más altas también se ven
+afectados, de manera que los detalles finos de la imagen se pierden,
+y el aspecto de cada bloque se asemeja más a un cuadrado
+de tono uniforme.
+Así, en lugar de una transición continua entre bloques contiguos,
+se pueden apreciar visualmente los límites entre bloques,
+perjudicando considerablemente la calidad visual de la imagen.
+
+Para ilustrar este fenómeno se comprimió una imagen de $200 \times 200$
+con un degradé de blanco a negro, con $B = 8$ y con $B = 32$.
+En las imágenes comprimidas puede apreciarse visualmente la
+presencia de bloques de tamaño $B \times B$.
+
 \begin{center}
-\begin{tabular}[t]{|ll|ll|ll|}
+\begin{tabular}{|c|c|c|}
 \hline
-img0 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img00.png} &
-img1 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img01.png} &
-img2 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img02.png} \\
+Original ($200 \times 200$)
+&
+Comprimida ($B = 8$)
+&
+Comprimida ($B = 32$)
+\\
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking.png}
+&
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking_b8.png}
+&
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking_b32.png} \\
 \hline
-img3 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img03.png} &
-img4 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img04.png} &
-img5 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img05.png} \\
-\hline
-img6 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img06.png} &
-img7 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img07.png} &
-img8 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img08.png} \\
-\hline
-img9 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img09.png} &&&& \\
-\hline
-\end{tabular}
+\end{tabular}\\
+{\bf Blocking effect}
 \end{center}
-\caption{Imágenes comprimidas con parámetros $B=8, Q=50, U=2000$}
-\label{fig:imagenes_de_prueba_8_20_5000}
-\end{figure}
+
+Contemplamos la posibilidad de que el {\em blocking effect} se diera
+únicamente como resultado de la cuantización del coeficiente DC.
+Para ello analizamos qué sucedería si se aplicara una variante del
+método de compresión en la que el coeficiente DC de cada bloque
+no se ve afectado por la cuantización. Las imágenes resultantes se
+muestran a continuación:
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+Original ($200 \times 200$)
+&
+Comprimida ($B = 8$)
+&
+Comprimida ($B = 32$)
+\\
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking.png}
+&
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking_notrunc_b8.png}
+&
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking_notrunc_b32.png} \\
+\hline
+\end{tabular}\\
+{\bf Blocking effect con el coeficiente DC no afectado por la etapa de cuantización}
+\end{center}
+
+Puede apreciarse que la cuantización del coeficiente DC tiene un efecto
+notable sobre el aspecto visual de los bloques: en particular, si el
+coeficiente DC se cuantiza, el valor de gris promedio de cada bloque
+no coincide con el valor de gris promedio original, sino que presenta
+irregularidades.
+Sin embargo, la cuantización del coeficiente DC claramente {\bf no} es el
+único factor que desencadena el {\em blocking effect}, ya que los
+límites entre bloques también son apreciables en las imágenes que
+se obtienen sin hacer dicha cuantización.
+
+\subsection{Validación del comportamiento del {\em peak signal-to-noise ratio}}
+
+Se estudió el comportamiento del
+{\em peak signal-to-noise ratio} (PSNR) sobre imágenes
+comprimidas.
+El PSNR es una medida, expresada en decibeles,
+de la fidelidad de una imagen $I$ de tamaño $N \times M$,
+que se encuentra posiblemente afectada por ruido,
+con respecto a una imagen de referencia $I^{(0)}$.
+Se calcula como sigue, a partir del error cuadrático medio (MSE):
+\[
+  \begin{array}{rcl}
+    \mathsf{PSNR} & = & 20 \log_{10}(255) - 10 \log_{10}(\mathsf{MSE}) \\
+    \mathsf{MSE} & = & \sum_{i=0}^{N-1} \sum_{j=0}^{M-1} (I_{ij} - I^{(0)}_{ij})^2
+  \end{array}
+\]
+Un mayor valor de PSNR representa mayor fidelidad en la representación.
+Los valores típicos rondan los $20$--$50$ dB.
+\bigskip
+
+Para validar el comportamiento del PSNR en imágenes comprimidas
+se realizó el siguiente experimento:
+se generaron 128 imágenes de $256 \times 256$.
+Para la $k$-ésima imagen, los píxeles toman valores de gris
+generados con una distribución aleatoria uniforme
+en el rango $[128 - k, 128 + k)$.
+Así, en la primera imagen ($k = 1$)
+los píxeles
+toman valores de gris entre 127 y 128,
+y en la última imagen ($k = 8$)
+los píxeles
+toman valores de gris entre 0 y 255
+(de tal manera que, a mayor $k$, hay mayor variabilidad
+en los valores).
+Se espera que la fidelidad obtenida por el compresor
+sea mejor para valores de $k$ más chicos y peor para valores
+de $k$ más grandes. Es decir, el PSNR debería decrecer a
+medida que crece $k$.
+
+En la siguiente imagen se muestra el valor del PSNR en función
+de $k$. Podemos ver que el comportamiento es en efecto el esperado:
+
+\begin{center}
+\includegraphics[width=8cm]{../imgs/output/test_psnr/k_vs_psnr.png}
+\end{center}
 
 \newpage
-\subsection{Variación del tamaño de bloque}
+\subsection{Variación de los parámetros}
+
+\subsubsection{Variación del tamaño de bloque}
 
 Para estudiar la variación del tamaño de bloque, se ejecutó el
 algoritmo sobre las diez imágenes de prueba con el
@@ -144,7 +422,7 @@ en $B = 8$.
 \TODO{TODO}
 
 \newpage
-\subsection{Variación del factor de cuantización}
+\subsubsection{Variación del factor de cuantización}
 
 Para estudiar la variación del factor de cuantización, se ejecutó el
 algoritmo sobre las diez imágenes de prueba con el
@@ -171,7 +449,7 @@ el método de compresión es más {\em lossy}.
 \TODO{TODO}
 
 \newpage
-\subsection{Variación del umbral de cuantización}
+\subsubsection{Variación del umbral de cuantización}
 
 Para estudiar la variación del umbral de cuantización, se ejecutó el
 algoritmo sobre las diez imágenes de prueba con el
@@ -192,6 +470,64 @@ box plot del {\em peak signal-to-noise ratio} obtenido:\\
 \section{Conclusiones}
 
 \TODO{TODO}
+
+\newpage
+\appendix
+\section{Imágenes de prueba en tonos de gris}
+
+\subsection{Imágenes originales}
+
+\begin{figure}[!htp]
+\begin{center}
+\begin{tabular}[t]{|ll|ll|ll|}
+\hline
+img0 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img00.png} &
+img1 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img01.png} &
+img2 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img02.png} \\
+\hline
+img3 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img03.png} &
+img4 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img04.png} &
+img5 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img05.png} \\
+\hline
+img6 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img06.png} &
+img7 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img07.png} &
+img8 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img08.png} \\
+\hline
+img9 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img09.png} &&&& \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Imágenes de prueba en tonos de gris}
+\label{fig:imagenes_de_prueba_gris}
+\end{figure}
+
+\newpage
+\subsection{Imágenes comprimidas}
+
+\begin{figure}[!htp]
+\begin{center}
+\begin{tabular}[t]{|ll|ll|ll|}
+\hline
+img0 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img00.png} &
+img1 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img01.png} &
+img2 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img02.png} \\
+\hline
+img3 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img03.png} &
+img4 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img04.png} &
+img5 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img05.png} \\
+\hline
+img6 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img06.png} &
+img7 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img07.png} &
+img8 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img08.png} \\
+\hline
+img9 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img09.png} &&&& \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Imágenes comprimidas con parámetros $B=8, Q=50, U=2000$}
+\label{fig:imagenes_de_prueba_comprimidas_8_50_2000}
+\end{figure}
+
 
 \end{document}
 
