@@ -172,6 +172,41 @@ que es {\em lossy}:
   Se utilizó el algoritmo de Lempel--Ziv--Welch provisto por la biblioteca \texttt{zlib}.
 \end{enumerate}
 
+\subsection{Compresión de imágenes a color}
+
+Realizar la compresión de imágenes a color es en sí un proceso relativamente simple comparado con el de imágenes en escala de grises, ya que en su mayor parte consiste en reutilizar el mismo proceso. El rasgo más distintivo de la compresión a color tiene que ver con cómo los humanos percibimos el color: nuestros ojos son mucho más sensibles al brillo que a los colores en sí. Naturalmente, esto implica que un cambio en el brillo de una imágen tiene más chances de ser detectado por nuestros ojos, y por ende perder información sobre el mismo es lo que más queremos evitar en un esquema de compresión de imágenes.
+
+\begin{enumerate}
+\item
+	{\bf Convertir de RGB a YCbCr}.
+	En este último, al igual que RGB, tenemos tres canales; el primero es precisamente el brillo que tenemos en el pixel, mientras que Cb y Cr denotan el color en el píxel. Es efecto, en el primer paso estamos separando el brillo de la imágen de su color. La conversión en YCbCr se lleva a cabo a través de la siguiente cuenta:
+
+	\begin{align}
+		Y &=&  0 &+ (0.299  & \cdot R) &+ (0.587  & \cdot G) &+ (0.114  & \cdot B)\\
+		C_B &=& 128 & - (0.168736 & \cdot R) &- (0.331264 & \cdot G) &+ (0.5   & \cdot B)\\
+		C_R &=& 128 &+ (0.5   & \cdot R) &- (0.418688 & \cdot G) &- (0.081312 & \cdot B)
+	\end{align}
+
+\item
+	{\bf Explotar la falta de detalle} con la que perciben nuestros ojos al color: en lugar de quedarnos con Cb y Cr (que tienen el mismo tamaño de la imágen cada uno), utilizamos lo que se denomina chroma subsampling. La idea es aplicar una transformación local por bloques que reduzca la cantidad de información que tenemos sobre cada píxel. A modo de ejemplo, podríamos tomar bloques de $2x2$ y utilizar la mediana del bloque como representante del mismo; esto nos reduciría a la mitad el tamaño de los canales Cb y Cr, por lo que el tamaño de la imágen se reduciría de $3n$ a $2n$ píxeles.
+
+	En sí mismo, el paso de chroma subsampling puede ser arbitrariamente complejo: está estudiado que el ojo puede soportar más perdida de color en bloques que son más anchos que altos, y demás. Qué tipo de subsampling es apropiado para la aplicación que se está realizando es altamente dependiente; no es el mismo tipo de sampling que se utiliza para video, que para imágenes fijas en la web. Esto complejiza considerablemente las posibles formas de elegir qué sample tomar para representar a un bloque de píxeles.
+
+\item
+	{\bf Comprimir}.
+	Aplicar compresión en escala de grises que vimos anteriormente a cada uno de los canales Y, Cb y Cr.
+\end{enumerate}
+
+Observemos que en el caso de compresión a color, tenemos pérdida en el paso de subsampling, y en la compresión en sí de los canales. Además, los canales Cb y Cr tienen dos pasos donde pueden perder, mientras que Y sólo tiene uno.
+
+El caso de descompresión es exactamente el inverso. La única diferencia es que el paso de cambio de YCbCr a RGB se hace realizando la siguiente cuenta:
+
+\begin{align}
+ R &=& Y              &&& + 1.402  & \cdot (C_R-128) \\
+ G &=& Y  & - 0.344136 & \cdot (C_B-128)& - 0.714136 & \cdot (C_R-128) \\
+ B &=& Y  & + 1.772  & \cdot (C_B-128)&
+\end{align}
+
 \section{Experimentación}
 
 Se eligieron diez imágenes de distinta naturaleza, todas ellas de
