@@ -3,6 +3,7 @@
 \usepackage{xcolor}
 \usepackage{geometry}
 \usepackage{graphicx}
+\usepackage{amsmath}
 
 \newcommand{\set}[1]{\{#1\}}
 
@@ -50,7 +51,111 @@ o {\em arithmetic coding}.
 
 \section{Implementación}
 
-\TODO{TODO}
+El método de compresión se implementó en Python, utilizando
+las bibliotecas
+\texttt{numpy} para hacer operaciones de matrices,
+\texttt{scipy} para calcular la DCT,
+y \texttt{skimage} y \texttt{PIL} para manipular imágenes.
+
+\subsection{Compresión de imágenes en escala de gris}
+
+El método de compresión para imágenes en escala de gris
+depende de tres parámetros numéricos:
+\begin{enumerate}
+\item {\bf Tamaño del bloque:} $B$. (Valor típico $B = 8$).
+\item {\bf Factor de cuantización:} $Q$. (Valor típico $Q = 50$).
+\item {\bf Umbral de cuantización:} $U$. (Valor típico $U = 2000$).
+\end{enumerate}
+Consta de las siguientes etapas. Observar que todas las etapas
+son inversibles, excepto la etapa~3~({\bf Cuantización})
+que es {\em lossy}:
+\begin{enumerate}
+\item
+  {\bf Partición en bloques.}
+  Partir la imagen en bloques de $B \times B$.
+  Si los lados de la imagen no son múltiplos de $B$,
+  se completa la imagen con negro para que lo sea. 
+\item
+  {\bf DCT.}
+  Aplicar la transformada discreta del coseno sobre cada bloque.
+  Si $I$ es una imagen de $N \times M$,
+  su transformada
+  $\mathsf{DCT}(I)$ es una imagen de $N \times M$
+  definida como sigue:
+  \[
+    \mathsf{DCT}(I)_{i,j} =
+    \alpha(i, N)
+    \cdot
+    \alpha(j, M)
+    \cdot
+    \sum_{n=0}^{N-1} \sum_{m=0}^{M-1}
+      I_{n,m} \cdot
+      \cos\left(\frac{\pi\ (2n + 1)\ i}{2N}\right) \cdot
+      \cos\left(\frac{\pi\ (2m + 1)\ j}{2M}\right)
+  \]
+  donde:
+  \[
+    \alpha(x, y) = \begin{cases}
+                     \sqrt{1/y} & \text{si $x = 0$} \\
+                     \sqrt{2/y} & \text{si $x \neq 0$} \\
+                   \end{cases}
+  \]
+  Se utilizó la implementación de la DCT provista por
+  la biblioteca \texttt{scipy}, ya que una implementación
+  manual (naïve) en Python resultaba prohibitivamente ineficiente.
+\item
+  {\bf Cuantización.}
+  En esta etapa, en lugar de la matriz de la imagen $I$,
+  se cuenta con la matriz de su transformada $\mathsf{DCT}(I)$.
+  En primer lugar, se divide a todos los coeficientes de dicha
+  matriz por el factor de cuantización $Q$:
+  \[
+    c_{ij} = \left\lfloor\frac{\mathsf{DCT}(I)_{ij}}{Q}\right\rfloor
+  \]
+  Además, se aplica el umbral $U$, obteniendo así una imagen
+  cuantizada $C$ de $N \times M$:
+  \[
+    C_{ij} =
+    \begin{cases}
+      c_{ij} & \text{si $|c_{ij}| < U$} \\
+      U      & \text{si $c_{ij} \geq U$} \\
+      -U     & \text{si $c_{ij} \leq -U$} \\
+    \end{cases}
+  \]
+\item
+  {\bf Codificación DC.}
+  Después de aplicar la DCT sobre un bloque de $B \times B$,
+  el coeficiente en la entrada $(0, 0)$ de la matriz se conoce
+  como coeficiente ``DC'', mientras que los coeficientes restantes
+  se conocen como coeficientes ``AC''.
+
+  El coeficiente DC corresponde a la frecuencia más baja, es
+  decir, el promedio de los valores de los $B^2$ píxeles en
+  dicho bloque.
+  En una imagen típica, hay una fuerte correlación entre los
+  coeficientes DC de bloques consecutivos.
+
+  Para aprovechar la redundancia dada por esta correlación,
+  en lugar de representar los coeficientes DC directamente por
+  medio de sus valores,
+  se los representa como sus diferencias consecutivas.
+  Es decir, en lugar de guardar la secuencia de coeficientes
+  DC como sigue:
+  \[
+    \mathsf{DC}_0,\ \mathsf{DC}_1,\ \mathsf{DC}_2 \hdots,\ \mathsf{DC}_n
+  \]
+  Se los representa del siguiente modo:
+  \[
+    \mathsf{DC}_0,\ (\mathsf{DC}_1 - \mathsf{DC}_0),\ (\mathsf{DC}_2 - \mathsf{DC}_1) \hdots,\ (\mathsf{DC}_n - \mathsf{DC}_{n-1})
+  \]
+  A continuación, todos los coeficientes de todos los bloques
+  se disponen en una lista.
+\item
+  {\bf Codificación Huffman}.
+  El último paso de la compresión para imágenes en escalas de
+  gris es la codificación Huffman de la lista de coeficientes.
+  La implementación respeta el método usual de Huffman.
+\end{enumerate}
 
 \section{Experimentación}
 
@@ -112,8 +217,72 @@ img9 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img09.png} &&&&
 \end{tabular}
 \end{center}
 \caption{Imágenes comprimidas con parámetros $B=8, Q=50, U=2000$}
-\label{fig:imagenes_de_prueba_8_20_5000}
+\label{fig:imagenes_de_prueba_comprimidas_8_50_2000}
 \end{figure}
+
+\subsection{{\em Artifacts} que resultan de la compresión}
+
+\subsubsection{{\em Ringing effect}}
+
+La transformada discreta del coseno, al igual que otras transformadas
+como la de Fourier, aproxima una función objetivo
+mediante una suma de funciones continuas. 
+Cuando la función objetivo presenta un cambio abrupto o
+``discontinuidad'', la aproximación da lugar a un efecto de
+reverberación.
+
+Para verificar este fenómeno, se comprimió una imagen de
+$200 \times 200$, con una mitad blanca y una mitad negra,
+con parámetros $B = 8$, $Q = 50$, $U = 2000$.
+En la imagen comprimida puede apreciarse el {\em ringing effect}
+visualmente:
+el borde claramente delimitado entre la mitad blanca y la mitad
+negra pasa a estar contaminado por varias franjas verticales de
+distintos tonos de gris.
+
+Por otro lado, al comprimir la imagen
+con $B = 100$, no debería manifestarse un {\em ringing effect},
+ya que la transición entre la mitad blanca y la mitad negra no
+ocurre de manera interna a un bloque.
+En efecto, esto también se puede apreciar en la figura de abajo.
+
+{\em Nota:} los recuadros negro que rodean a las imágenes no forman
+parte de la imagen.\\
+\begin{center}
+\begin{tabular}{c|c|c}
+Original ($200 \times 200$)
+&
+Comprimida ($B = 8$)
+&
+Comprimida ($B = 100$)
+\\
+&
+Hay {\em ringing effect}
+&
+No hay {\em ringing effect}
+\\
+\hline
+&
+\\
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringing200.png}}
+}
+&
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringing200_b8.png}}
+}
+&
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringing200_b100.png}}
+}
+\end{tabular}
+\end{center}
 
 \newpage
 \subsection{Variación del tamaño de bloque}
