@@ -1,6 +1,10 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{graphicx}
+
+\newcommand{\set}[1]{\{#1\}}
 
 \title{
   Introducci\'on al procesamiento digital de im\'agenes \\
@@ -50,7 +54,140 @@ o {\em arithmetic coding}.
 
 \section{Experimentación}
 
+Se eligieron diez imágenes de distinta naturaleza, todas ellas de
+$1000 \times 1000$ píxeles. Se muestran en la Figura~\ref{fig:imagenes_de_prueba_gris}.
+
+Como conjunto de parámetros de referencia, se tomaron:
+{\bf tamaño de bloque} $B = 8$,
+{\bf factor de cuantización} $Q = 50$,
+y {\bf umbral de cuantización} $U = 2000$.
+Las imágenes resultantes se muestran en
+la Figura~\ref{fig:imagenes_de_prueba_comprimidas_8_50_2000}.
+Este conjunto de parámetros se utiliza a modo de control,
+utilizado para comparar el comportamiento del algoritmo de compresión
+cuando se varía alguno de dichos parámetros.
+
+\begin{figure}
+\begin{center}
+\begin{tabular}[t]{|ll|ll|ll|}
+\hline
+img0 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img00.png} &
+img1 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img01.png} &
+img2 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img02.png} \\
+\hline
+img3 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img03.png} &
+img4 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img04.png} &
+img5 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img05.png} \\
+\hline
+img6 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img06.png} &
+img7 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img07.png} &
+img8 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img08.png} \\
+\hline
+img9 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img09.png} &&&& \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Imágenes de prueba en tonos de gris}
+\label{fig:imagenes_de_prueba_gris}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\begin{tabular}[t]{|ll|ll|ll|}
+\hline
+img0 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img00.png} &
+img1 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img01.png} &
+img2 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img02.png} \\
+\hline
+img3 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img03.png} &
+img4 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img04.png} &
+img5 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img05.png} \\
+\hline
+img6 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img06.png} &
+img7 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img07.png} &
+img8 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img08.png} \\
+\hline
+img9 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img09.png} &&&& \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Imágenes comprimidas con parámetros $B=8, Q=50, U=2000$}
+\label{fig:imagenes_de_prueba_8_20_5000}
+\end{figure}
+
+\newpage
+\subsection{Variación del tamaño de bloque}
+
+Para estudiar la variación del tamaño de bloque, se ejecutó el
+algoritmo sobre las diez imágenes de prueba con el
+factor de cuantización fijo en $Q = 50$,
+el umbral de cuantización fijo en $U = 2000$,
+y el tamaño de bloque variando con valores
+$B \in \set{1,2,4,8,16,32,64,128,256,512}$.
+
+Para cada valor de $B$, en el siguiente gráfico se muestra un
+box plot de la tasa de compresión obtenida:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/b_rate.png}
+
+Para cada valor de $B$, en el siguiente gráfico se muestra un
+box plot del {\em peak signal-to-noise ratio} obtenido:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/b_psnr.png}
+
+Puede apreciarse que hay menor varianza en la tasa de compresión
+obtenida a medida que se agranda el tamaño de bloque,
+mientras que hay mayor varianza en la calidad de la imagen obtenida.
+
+La mejor tasa de compresión se alcanza con el tamaño de bloque
+$B = 8$. El mejor valor de PSNR en promedio se alcanza también
+en $B = 8$.
+
 \TODO{TODO}
+
+\newpage
+\subsection{Variación del factor de cuantización}
+
+Para estudiar la variación del factor de cuantización, se ejecutó el
+algoritmo sobre las diez imágenes de prueba con el
+tamaño de bloque fijo en $B = 8$,
+el umbral de cuantización fijo en $U = 2000$,
+y el factor de cuantización variando con valores
+$Q \in \set{12,25,50,100,200,400,800}$.
+
+Para cada valor de $Q$, en el siguiente gráfico se muestra un
+box plot de la tasa de compresión obtenida:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/q_rate.png}
+
+Para cada valor de $Q$, en el siguiente gráfico se muestra un
+box plot del {\em peak signal-to-noise ratio} obtenido:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/q_psnr.png}
+
+Como es de esperarse, la tasa de compresión aumenta a medida que
+se aumenta el factor de cuantización, ya que, a mayor valor de $Q$,
+los coeficientes se cuantizan en un dominio más chico.
+Por otro lado, aumentar el factor de cuantización produce obviamente
+una reducción en la calidad de la imagen ya que a mayor valor de $Q$
+el método de compresión es más {\em lossy}.
+
+\TODO{TODO}
+
+\newpage
+\subsection{Variación del umbral de cuantización}
+
+Para estudiar la variación del umbral de cuantización, se ejecutó el
+algoritmo sobre las diez imágenes de prueba con el
+tamaño de bloque fijo en $B = 8$,
+el factor de cuantización fijo en $Q = 50$,
+y el umbral de cuantización variando con valores
+$U \in \set{31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000}$.
+
+Para cada valor de $U$, en el siguiente gráfico se muestra un
+box plot de la tasa de compresión obtenida:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/u_rate.png}
+
+Para cada valor de $U$, en el siguiente gráfico se muestra un
+box plot del {\em peak signal-to-noise ratio} obtenido:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/u_psnr.png}
+
 
 \section{Conclusiones}
 

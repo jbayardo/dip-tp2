@@ -1,4 +1,6 @@
 #!/usr/bin/env python2
+import os
+import math
 import sys
 import heapq
 import struct
@@ -400,14 +402,38 @@ def simple_jpeg_decompression(data):
     img = inverse_pad_image(img_size, img_padded)
     return img
 
+def psnr(img1, img2):
+    """
+    Calculate the peak signal-to-noise ratio of two images of the same size.
+    """
+    s = 0
+    for i in range(img1.width):
+        for j in range(img1.height):
+            v1 = img1.getpixel((i, j))
+            v2 = img2.getpixel((i, j))
+            s += (v1 - v2) ** 2
+    mse = float(s) / (img1.width * img1.height)
+    if mse == 0:
+        return 0
+    return 20 * math.log(255, 10) - 10 * math.log(mse, 10)
+
 def usage():
-    sys.stderr.write('Usage:\n')
-    sys.stderr.write('  %s -c in.png out.j    Compress.\n' % (sys.argv[0]))
-    sys.stderr.write('  %s -d in.j out.png    Decompress.\n' % (sys.argv[0]))
-    sys.stderr.write('Options for compression:\n')
-    sys.stderr.write('  -b block_size[=8]\n')
-    sys.stderr.write('  -f quantization_factor[=50]\n')
-    sys.stderr.write('  -t quantization_threshold[=2000]\n')
+    msg = [
+      'Usage:\n',
+      '  {prog} -c in.png out.j          Compress.',
+      '  {prog} -d in.j out.png          Decompress.',
+      '  {prog} --psnr orig.png new.png  Calculate PSNR.',
+      '  {prog} --rate orig.png compr.j  Calculate compression rate.',
+      'Options for compression:',
+      '  -b block_size[=8]',
+      '  -q quantization_factor[=50]',
+      '  -u quantization_threshold[=2000]',
+    ]
+    sys.stderr.write('\n'.join(msg).format(prog=sys.argv[0]) + '\n')
+
+def compression_rate(orig, compr):
+    im = img(orig)
+    return float((im.width * im.height)) / os.stat(compr).st_size
 
 def main():
     argv = sys.argv[:]
@@ -424,10 +450,10 @@ def main():
         if opt == '-b':
             if len(argv) == 0: usage()
             options['block_size'] = int(argv.pop(0))
-        elif opt == '-f':
+        elif opt == '-q':
             if len(argv) == 0: usage()
             options['quantization_factor'] = int(argv.pop(0))
-        elif opt == '-t':
+        elif opt == '-u':
             if len(argv) == 0: usage()
             options['quantization_threshold'] = int(argv.pop(0))
         else:
@@ -448,6 +474,10 @@ def main():
         infile, outfile = args[1:]
         with open(infile, 'r') as f:
             simple_jpeg_decompression(f.read()).save(outfile)
+    elif len(args) == 3 and args[0] == '--psnr':
+        print psnr(img(args[1]),img( args[2]))
+    elif len(args) == 3 and args[0] == '--rate':
+        print compression_rate(args[1], args[2])
     else:
         usage()
 
