@@ -4,6 +4,7 @@
 \usepackage{geometry}
 \usepackage{graphicx}
 \usepackage{amsmath}
+\usepackage[spanish]{babel}
 
 \newcommand{\set}[1]{\{#1\}}
 
@@ -21,6 +22,7 @@
 
 \begin{document}
 \maketitle
+\tableofcontents
 
 \section{Introducción}
 
@@ -160,96 +162,57 @@ que es {\em lossy}:
 \section{Experimentación}
 
 Se eligieron diez imágenes de distinta naturaleza, todas ellas de
-$1000 \times 1000$ píxeles. Se muestran en la Figura~\ref{fig:imagenes_de_prueba_gris}.
+$1000 \times 1000$ píxeles. Se muestran en la Figura~\ref{fig:imagenes_de_prueba_gris} (en el Apéndice).
 
 Como conjunto de parámetros de referencia, se tomaron:
 {\bf tamaño de bloque} $B = 8$,
 {\bf factor de cuantización} $Q = 50$,
 y {\bf umbral de cuantización} $U = 2000$.
 Las imágenes resultantes se muestran en
-la Figura~\ref{fig:imagenes_de_prueba_comprimidas_8_50_2000}.
+la Figura~\ref{fig:imagenes_de_prueba_comprimidas_8_50_2000}
+(en el Apéndice).
 Este conjunto de parámetros se utiliza a modo de control,
 utilizado para comparar el comportamiento del algoritmo de compresión
 cuando se varía alguno de dichos parámetros.
+Salvo que se indique lo contrario, las imágenes se comprimen con
+estos valores para los parámetros.
 
-\begin{figure}
-\begin{center}
-\begin{tabular}[t]{|ll|ll|ll|}
-\hline
-img0 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img00.png} &
-img1 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img01.png} &
-img2 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img02.png} \\
-\hline
-img3 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img03.png} &
-img4 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img04.png} &
-img5 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img05.png} \\
-\hline
-img6 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img06.png} &
-img7 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img07.png} &
-img8 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img08.png} \\
-\hline
-img9 & \includegraphics[width=4cm]{../imgs/input/imgs_gray/img09.png} &&&& \\
-\hline
-\end{tabular}
-\end{center}
-\caption{Imágenes de prueba en tonos de gris}
-\label{fig:imagenes_de_prueba_gris}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-\begin{tabular}[t]{|ll|ll|ll|}
-\hline
-img0 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img00.png} &
-img1 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img01.png} &
-img2 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img02.png} \\
-\hline
-img3 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img03.png} &
-img4 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img04.png} &
-img5 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img05.png} \\
-\hline
-img6 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img06.png} &
-img7 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img07.png} &
-img8 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img08.png} \\
-\hline
-img9 & \includegraphics[width=4cm]{../imgs/output/gray_8_50_2000/img09.png} &&&& \\
-\hline
-\end{tabular}
-\end{center}
-\caption{Imágenes comprimidas con parámetros $B=8, Q=50, U=2000$}
-\label{fig:imagenes_de_prueba_comprimidas_8_50_2000}
-\end{figure}
-
-\subsection{{\em Artifacts} que resultan de la compresión}
+\subsection{Artefactos de compresión}
 
 \subsubsection{{\em Ringing effect}}
 
 La transformada discreta del coseno, al igual que otras transformadas
 como la de Fourier, aproxima una función objetivo
 mediante una suma de funciones continuas. 
-Cuando la función objetivo presenta un cambio abrupto o
-``discontinuidad'', la aproximación da lugar a un efecto de
+Cuando la función objetivo presenta un cambio abrupto,
+la aproximación da lugar a un efecto de
 reverberación.
+Esto se manifiesta visualmente como un ``halo'' en los bordes.
 
-Para verificar este fenómeno, se comprimió una imagen de
-$200 \times 200$, con una mitad blanca y una mitad negra,
-con parámetros $B = 8$, $Q = 50$, $U = 2000$.
-En la imagen comprimida puede apreciarse el {\em ringing effect}
+Para verificar este fenómeno, se comprimieron dos imágenes de
+$200 \times 200$.
+La primera imagen es un cuadrado con una mitad blanca y una
+mitad negra.
+La segunda imagen es un círculo blanco sobre fondo negro.
+En ambas imágenes comprimida puede apreciarse el {\em ringing effect}
 visualmente:
-el borde claramente delimitado entre la mitad blanca y la mitad
-negra pasa a estar contaminado por varias franjas verticales de
-distintos tonos de gris.
+los bordes claramente delimitados entre la región blanca y la
+región negra pasan a estar contaminados por un halo de
+franjas de distintos tonos de gris.
+La situación es particularmente severa en el caso del círculo.
 
-Por otro lado, al comprimir la imagen
-con $B = 100$, no debería manifestarse un {\em ringing effect},
-ya que la transición entre la mitad blanca y la mitad negra no
-ocurre de manera interna a un bloque.
-En efecto, esto también se puede apreciar en la figura de abajo.
+Para completar el experimento, se comprimió la primera imagen
+con $B = 100$.
+En este caso no debería manifestarse un {\em ringing effect},
+ya que la transición entre la mitad blanca y la mitad negra ocurre
+justo en el límite entre dos bloques.
+Esto efectivamente puede apreciarse en la figura de abajo.
 
 {\em Nota:} los recuadros negro que rodean a las imágenes no forman
 parte de la imagen.\\
 \begin{center}
-\begin{tabular}{c|c|c}
+\begin{tabular}{|c|c|c|}
+\hline
 Original ($200 \times 200$)
 &
 Comprimida ($B = 8$)
@@ -281,8 +244,71 @@ No hay {\em ringing effect}
 \setlength{\fboxrule}{1pt}%
 \fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringing200_b100.png}}
 }
+\\
+&&
+\\
+\hline
+&&
+\\
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringingcircle.png}}
+}
+&
+{
+\setlength{\fboxsep}{0pt}%
+\setlength{\fboxrule}{1pt}%
+\fbox{\includegraphics[width=4cm]{../imgs/output/ringing_effect/ringingcircle_out.png}}
+}
+&
+\\
+\hline
 \end{tabular}
+{\bf Ringing effect}
 \end{center}
+
+\subsubsection{{\em Blocking}}
+
+Como se mencionó en la sección de implementación,
+la compresión se realiza por bloques de tamaño $B \times B$.
+Dado que los coeficientes de cada bloque se cuantiza,
+con pérdida de información, el valor promedio de gris de un bloque dado
+(correspondiente al coeficiente DC)
+no es exactamente el mismo que el original, sino que se ve afectado
+por un truncamiento.
+Además, los valores de las frecuencias más altas también se ven
+afectados, de manera que los detalles finos de la imagen se pierden,
+y el aspecto de cada bloque se asemeja más a un cuadrado
+de tono uniforme.
+Así, en lugar de una transición continua entre bloques contiguos,
+se pueden apreciar visualmente los límites entre bloques,
+perjudicando considerablemente la calidad visual de la imagen.
+
+Para ilustrar este fenómeno se comprimió una imagen de $200 \times 200$
+con un degradé de blanco a negro, con $B = 8$ y con $B = 32$.
+En las imágenes comprimidas puede apreciarse visualmente la
+presencia de bloques de tamaño $B \times B$.
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+Original ($200 \times 200$)
+&
+Comprimida ($B = 8$)
+&
+Comprimida ($B = 32$)
+\\
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking.png}
+&
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking_b8.png}
+&
+\includegraphics[width=4cm]{../imgs/output/blocking_effect/blocking_b32.png} \\
+\hline
+\end{tabular}\\
+{\bf Blocking effect}
+\end{center}
+
 
 \newpage
 \subsection{Variación del tamaño de bloque}
@@ -361,6 +387,64 @@ box plot del {\em peak signal-to-noise ratio} obtenido:\\
 \section{Conclusiones}
 
 \TODO{TODO}
+
+\newpage
+\appendix
+\section{Imágenes de prueba en tonos de gris}
+
+\subsection{Imágenes originales}
+
+\begin{figure}[!htp]
+\begin{center}
+\begin{tabular}[t]{|ll|ll|ll|}
+\hline
+img0 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img00.png} &
+img1 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img01.png} &
+img2 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img02.png} \\
+\hline
+img3 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img03.png} &
+img4 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img04.png} &
+img5 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img05.png} \\
+\hline
+img6 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img06.png} &
+img7 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img07.png} &
+img8 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img08.png} \\
+\hline
+img9 & \includegraphics[width=3cm]{../imgs/input/imgs_gray/img09.png} &&&& \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Imágenes de prueba en tonos de gris}
+\label{fig:imagenes_de_prueba_gris}
+\end{figure}
+
+\newpage
+\subsection{Imágenes comprimidas}
+
+\begin{figure}[!htp]
+\begin{center}
+\begin{tabular}[t]{|ll|ll|ll|}
+\hline
+img0 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img00.png} &
+img1 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img01.png} &
+img2 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img02.png} \\
+\hline
+img3 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img03.png} &
+img4 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img04.png} &
+img5 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img05.png} \\
+\hline
+img6 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img06.png} &
+img7 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img07.png} &
+img8 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img08.png} \\
+\hline
+img9 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img09.png} &&&& \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Imágenes comprimidas con parámetros $B=8, Q=50, U=2000$}
+\label{fig:imagenes_de_prueba_comprimidas_8_50_2000}
+\end{figure}
+
 
 \end{document}
 
