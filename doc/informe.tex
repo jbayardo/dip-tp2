@@ -157,6 +157,19 @@ que es {\em lossy}:
   El último paso de la compresión para imágenes en escalas de
   gris es la codificación Huffman de la lista de coeficientes.
   La implementación respeta el método usual de Huffman.
+\item
+  {\bf Compresión con \texttt{zlib}}.
+  Aun después de la compresión usando la codificación de Huffman,
+  la imagen comprimida resultaba tener mucha redundancia.
+  Se ensayaron varias alternativas para eliminar esta redundancia:
+  \begin{enumerate}
+  \item Aplicar nuevamente Huffman.
+  \item Codificar la salida con {\em run-length encoding} para los bytes \texttt{0x00} y \texttt{0xff},
+        que eran los que tenían mayores repeticiones.
+  \item Comprimir la salida con el algoritmo de Lempel--Ziv--Welch.
+  \end{enumerate}
+  Este último método fue con el que consistentemente se obtuvieron mejores tasas de compresión.
+  Se utilizó el algoritmo de Lempel--Ziv--Welch provisto por la biblioteca \texttt{zlib}.
 \end{enumerate}
 
 \section{Experimentación}
@@ -391,7 +404,6 @@ de $k$. Podemos ver que el comportamiento es en efecto el esperado:
 \includegraphics[width=8cm]{../imgs/output/test_psnr/k_vs_psnr.png}
 \end{center}
 
-\newpage
 \subsection{Variación de los parámetros}
 
 \subsubsection{Variación del tamaño de bloque}
@@ -404,24 +416,22 @@ y el tamaño de bloque variando con valores
 $B \in \set{1,2,4,8,16,32,64,128,256,512}$.
 
 Para cada valor de $B$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión obtenida:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/b_rate.png}
-
-Para cada valor de $B$, en el siguiente gráfico se muestra un
-box plot del {\em peak signal-to-noise ratio} obtenido:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/b_psnr.png}
+box plot de la tasa de compresión y el
+{\em peak signal-to-noise ratio} obtenidos:\\
+\begin{center}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/b_rate.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/b_psnr.png}
+\end{center}
 
 Puede apreciarse que hay menor varianza en la tasa de compresión
 obtenida a medida que se agranda el tamaño de bloque,
 mientras que hay mayor varianza en la calidad de la imagen obtenida.
 
-La mejor tasa de compresión se alcanza con el tamaño de bloque
-$B = 8$. El mejor valor de PSNR en promedio se alcanza también
-en $B = 8$.
+El tamaño de bloque $B = 8$ parece ser ideal, ya que en ese valor
+se alcanzan simultáneamente la mejor tasa de compresión en promedio,
+y el mejor valor de PSNR en promedio, con varianzas relativamente
+bajas.
 
-\TODO{TODO}
-
-\newpage
 \subsubsection{Variación del factor de cuantización}
 
 Para estudiar la variación del factor de cuantización, se ejecutó el
@@ -432,12 +442,12 @@ y el factor de cuantización variando con valores
 $Q \in \set{12,25,50,100,200,400,800}$.
 
 Para cada valor de $Q$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión obtenida:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/q_rate.png}
-
-Para cada valor de $Q$, en el siguiente gráfico se muestra un
-box plot del {\em peak signal-to-noise ratio} obtenido:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/q_psnr.png}
+box plot de la tasa de compresión y el
+{\em peak signal-to-noise ratio} obtenidos:\\
+\begin{center}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/q_rate.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/q_psnr.png}
+\end{center}
 
 Como es de esperarse, la tasa de compresión aumenta a medida que
 se aumenta el factor de cuantización, ya que, a mayor valor de $Q$,
@@ -446,9 +456,6 @@ Por otro lado, aumentar el factor de cuantización produce obviamente
 una reducción en la calidad de la imagen ya que a mayor valor de $Q$
 el método de compresión es más {\em lossy}.
 
-\TODO{TODO}
-
-\newpage
 \subsubsection{Variación del umbral de cuantización}
 
 Para estudiar la variación del umbral de cuantización, se ejecutó el
@@ -459,12 +466,29 @@ y el umbral de cuantización variando con valores
 $U \in \set{31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000}$.
 
 Para cada valor de $U$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión obtenida:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/u_rate.png}
+box plot de la tasa de compresión y el
+{\em peak signal-to-noise ratio} obtenidos:\\
+\begin{center}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/u_rate.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/u_psnr.png}
+\end{center}
 
-Para cada valor de $U$, en el siguiente gráfico se muestra un
-box plot del {\em peak signal-to-noise ratio} obtenido:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/u_psnr.png}
+No se encuentran diferencias significativas para valores de $U$
+superiores a 31 en el rango de valores elegido.
+Esto sugiere que el rango en el que se eligieron los valores de $U$
+está mal elegido.
+Se repitió el análisis para el rango de valores
+$U \in \set{5, 10, 15, 20, 25, 30, 35, 40, 45, 50}$.
+\begin{center}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/ualt_rate.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/ualt_psnr.png}
+\end{center}
+Con este cambio puede apreciarse, como es de esperarse, que
+a medida que aumenta el valor de $U$,
+la tasa de compresión disminuye e, inversamente, la calidad de
+la imagen aumenta.
+
+\subsection{Elección de parámetros}
 
 
 \section{Conclusiones}

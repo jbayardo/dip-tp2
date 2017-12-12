@@ -4,6 +4,7 @@ import math
 import sys
 import heapq
 import struct
+import zlib
 
 import bitarray
 
@@ -289,15 +290,16 @@ def inverse_huffman(huff_tree, huff_bits):
             p = huff_tree
     return dct_matrix_dc
 
+def write_huff_tree(tree):
+    if isinstance(tree, list):
+        return ':' + write_huff_tree(tree[0]) \
+                   + write_huff_tree(tree[1])
+    else:
+        return '.' + struct.pack('i', tree)
+
 def pack_data(img_size, img_padded_size, block_size, quantization_factor,
               huff_tree, huff_bits):
     "Pack all the data representing the compressed image into a string."
-    def write_huff_tree(tree):
-        if isinstance(tree, list):
-            return ':' + write_huff_tree(tree[0]) \
-                       + write_huff_tree(tree[1])
-        else:
-            return '.' + struct.pack('i', tree)
     compressed_image = []
     compressed_image.append(struct.pack('i', img_size[0]))
     compressed_image.append(struct.pack('i', img_size[1]))
@@ -310,21 +312,22 @@ def pack_data(img_size, img_padded_size, block_size, quantization_factor,
     compressed_image.append(huff_bits.tobytes())
     return ''.join(compressed_image)
 
+def parse_huff_tree(string, i):
+    if string[i] == ':':
+        i += 1
+        i, left = parse_huff_tree(string, i)
+        i, right = parse_huff_tree(string, i)
+        return i, [left, right]
+    elif string[i] == '.':
+        i += 1
+        value = struct.unpack('i', string[i : i + 4])[0]
+        i += 4
+        return i, value
+    else:
+        raise Exception()
+
 def inverse_pack_data(compressed_image):
     "Unpack all the data representing the compressed image from a string."
-    def parse_huff_tree(string, i):
-        if string[i] == ':':
-            i += 1
-            i, left = parse_huff_tree(string, i)
-            i, right = parse_huff_tree(string, i)
-            return i, [left, right]
-        elif string[i] == '.':
-            i += 1
-            value = struct.unpack('i', string[i : i + 4])[0]
-            i += 4
-            return i, value
-        else:
-            raise Exception()
     i = 0
     (
       img_width,
@@ -350,6 +353,22 @@ def inverse_pack_data(compressed_image):
         huff_bits
     )
 
+def compress_bytes(string):
+    return zlib.compress(string, 9)
+
+def inverse_compress_bytes(string):
+    return zlib.decompress(string)
+
+def run(string):
+    i = 0
+    (nbits,) = struct.unpack('i', string[i : i + 4])
+    i, huff_tree = parse_huff_tree(string, i)
+    huff_bits = bitarray.bitarray()
+    huff_bits.frombytes(string[i : ])
+    huff_bits = huff_bits[: nbits]
+    lst = inverse_huffman(huff_tree, huff_bits)
+    return ''.join([chr(b) for b in lst])
+
 def simple_jpeg_compression(img,
                             block_size=8,
                             quantization_factor=10,
@@ -374,11 +393,13 @@ def simple_jpeg_compression(img,
                          huff_tree,
                          huff_bits
                        )
-    return compressed_image
+    compressed_image_z = compress_bytes(compressed_image)
+    return compressed_image_z
 
 def simple_jpeg_decompression(data):
     "Decompress an image."
-    compressed_image = data
+    compressed_image_z = data
+    compressed_image = inverse_compress_bytes(compressed_image_z)
     (
       img_size,
       img_padded_size,
