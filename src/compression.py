@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage.measure as skm
 import skimage as ski
 import skimage.io
 import itertools
@@ -129,35 +130,36 @@ class ImageProcessor(object):
         raise NotImplementedError()
 
 
-class ChunkProcessor(ImageProcessor):
+class SquareChunkProcessor(ImageProcessor):
     def __init__(self, chunk_size=8):
         self.image = None
         self.height = None
         self.width = None
-        self.height_blocks = None
-        self.width_blocks = None
         self.chunk_size = chunk_size
 
     def apply(self, image):
         self.image = image
-        self.height = image.shape[0]
-        self.width = image.shape[1]
+        # TODO: hay que hacer que self._processed_image tenga el mismo tamanio que la nueva imagen
+        # self.image = np.pad(image,
+        #                     pad_width=[
+        #                         (0, self.chunk_size - (image.shape[0] % self.chunk_size)),
+        #                         (0, self.chunk_size - (image.shape[1] % self.chunk_size))],
+        #                     mode='constant')
+        self.height = self.image.shape[0]
+        self.width = self.image.shape[1]
 
-        assert self.height % self.chunk_size == 0
-        assert self.width % self.chunk_size == 0
+        height_blocks = self.height // self.chunk_size
+        width_blocks = self.width // self.chunk_size
 
-        self.height_blocks = self.height // self.chunk_size
-        self.width_blocks = self.width // self.chunk_size
-
-        for height_block_index in range(self.height_blocks):
-            for width_block_index in range(self.width_blocks):
+        for height_block_index in range(height_blocks):
+            for width_block_index in range(width_blocks):
                 self._process_chunk(height_block_index, width_block_index)
 
     def _process_chunk(self, height_block_index, width_block_index):
         raise NotImplementedError()
 
 
-class Codec(ChunkProcessor):
+class Codec(SquareChunkProcessor):
     def __init__(self, chunk_size=8):
         super().__init__(chunk_size)
         self._processed_image = None
@@ -305,7 +307,7 @@ class DecompressingTableGreyscaleDecoder(TableGreyscaleDecoder):
         height_blocks = height // self.chunk_size
         width_blocks = width // self.chunk_size
 
-        last_chunk_DC_coefficient = 0
+        last_chunk_dc_coefficient = 0
         for height_block_index in range(height_blocks):
             for width_block_index in range(width_blocks):
                 index = (height_block_index, width_block_index)
@@ -314,21 +316,21 @@ class DecompressingTableGreyscaleDecoder(TableGreyscaleDecoder):
                 width_block_start = width_block_index * self.chunk_size
                 width_block_end = (width_block_index + 1) * self.chunk_size
 
-                DC_coefficient = file['DC'][index] + last_chunk_DC_coefficient
-                last_chunk_DC_coefficient = DC_coefficient
+                dc_coefficient = file['DC'][index] + last_chunk_dc_coefficient
+                last_chunk_dc_coefficient = dc_coefficient
 
                 compressed_chunk = list(zip(*file['chunks'][index]))
                 lengths_of_runs, codes = compressed_chunk[0], compressed_chunk[1]
                 symbols = self._decompressor.decode_many(codes)
 
-                decompressed_chunk = self._run_length_decode(DC_coefficient, lengths_of_runs, symbols)
+                decompressed_chunk = self._run_length_decode(dc_coefficient, lengths_of_runs, symbols)
                 image[height_block_start:height_block_end, width_block_start:width_block_end] = decompressed_chunk
 
         return image
 
-    def _run_length_decode(self, DC_coefficient, lengths_of_runs, symbols):
+    def _run_length_decode(self, dc_coefficient, lengths_of_runs, symbols):
         chunk = np.zeros(shape=(self.chunk_size, self.chunk_size))
-        chunk[0, 0] = DC_coefficient
+        chunk[0, 0] = dc_coefficient
         position = itertools.islice(self._zigzag_order, 1, None)
         for length, symbol in zip(lengths_of_runs, symbols):
             while length > 0:
@@ -344,10 +346,10 @@ class CompressingTableGreyscaleEncoder(TableGreyscaleEncoder):
         self._zigzag_order = zigzag(chunk_size)
         self._compressor = compressor
         self._compressed_image = None
-        self._last_chunk_DC_coefficient = None
+        self._last_chunk_dc_coefficient = None
 
     def apply(self, image):
-        self._last_chunk_DC_coefficient = 0
+        self._last_chunk_dc_coefficient = 0
         self._compressed_image = {
             'DC': {},
             'chunks': {}
@@ -357,7 +359,7 @@ class CompressingTableGreyscaleEncoder(TableGreyscaleEncoder):
 
         self._compressed_image['width'] = self.width
         self._compressed_image['height'] = self.height
-        return self._processed_image, self._compressed_image
+        return self._compressed_image
 
     def _pipeline(self, height_block_index, width_block_index, chunk):
         chunk = super()._pipeline(height_block_index, width_block_index, chunk)
@@ -375,8 +377,8 @@ class CompressingTableGreyscaleEncoder(TableGreyscaleEncoder):
         compressed_chunk = self._compressor.encode_many(symbols)
 
         # Add to compressed file
-        self._compressed_image['DC'][index] = chunk[0, 0] - self._last_chunk_DC_coefficient
-        self._last_chunk_DC_coefficient = chunk[0, 0]
+        self._compressed_image['DC'][index] = chunk[0, 0] - self._last_chunk_dc_coefficient
+        self._last_chunk_dc_coefficient = chunk[0, 0]
 
         self._compressed_image['chunks'][index] = list(zip(lengths_of_runs, compressed_chunk))
 
@@ -403,25 +405,17 @@ class CompressingTableGreyscaleEncoder(TableGreyscaleEncoder):
 
 
 class YCbCrSubsamplingEncoder(ImageProcessor):
-    def __init__(self, processors, J, a, b, Alpha = None):
-        assert J is not None
-        assert a is not None
-        assert b is not None
+    def __init__(self, processors, sampling):
         assert 'Y' in processors
         assert 'Cb' in processors
         assert 'Cr' in processors
 
         self._processors = processors
-        self._J = J
-        self._a = a
-        self._b = b
-        self._Alpha = Alpha
+        self._sampling = sampling
 
-    @property
-    def subsample(self):
-        if self._Alpha is None:
-            return self._J, self._a, self._b
-        return self._J, self._a, self._b, self._Alpha
+        self.height = None
+        self.width = None
+        self.image = None
 
     @staticmethod
     def rgb2ycbcr(im):
@@ -437,34 +431,45 @@ class YCbCrSubsamplingEncoder(ImageProcessor):
         rgb[:, :, [1, 2]] -= 128
         return np.uint8(rgb.dot(xform.T))
 
-    def chroma_subsample(self, image):
-        # TODO: implement...
-        return image
+    def chroma_subsample(self, subchannel, subsampling):
+        return skm.block_reduce(subchannel,
+                                block_size=(subsampling[0], subsampling[1]),
+                                func=np.mean)
 
     def apply(self, image):
-        assert 3 <= image.shape[2] <= 4
-        assert image.shape[2] == 3 or 'A' in self._processors
+        channels = image.shape[2]
 
-        ycbcr = YCbCrSubsamplingEncoder.rgb2ycbcr(image[:, :, :3])
+        assert 3 <= channels <= 4
+        assert channels == 3 or 'A' in self._processors
+
+        self.image = image
+        self.height = self.image.shape[0]
+        self.width = self.image.shape[1]
+
+        # Alpha subsampling
+        A_subsampled = None
+        if channels == 4:
+            A_subsampled = self.chroma_subsample(self.image[:,:,3],
+                                                 self._sampling)
+            A_subsampled = self._processors['A'].apply(A_subsampled)
+
+        ycbcr = YCbCrSubsamplingEncoder.rgb2ycbcr(self.image[:, :, :3])
 
         Y = ycbcr[:,:,0]
         Y = self._processors['Y'].apply(Y)
 
-        Cb_subsampled = self.chroma_subsample(ycbcr[:,:,1])
+        Cb_subsampled = self.chroma_subsample(ycbcr[:,:,1],
+                                              self._sampling)
         Cb_subsampled = self._processors['Cb'].apply(Cb_subsampled)
 
-        Cr_subsampled = self.chroma_subsample(ycbcr[:,:,2])
+        Cr_subsampled = self.chroma_subsample(ycbcr[:,:,2],
+                                              self._sampling)
         Cr_subsampled = self._processors['Cr'].apply(Cr_subsampled)
 
-        A_subsampled = None
-        if image.shape[2] == 4:
-            A_subsampled = self.chroma_subsample(image[:,:,3])
-            A_subsampled = self._processors['A'].apply(A_subsampled)
-
         return {
-            'width': image.shape[0],
-            'height': image.shape[1],
-            'subsample': self.subsample,
+            'height': self.height,
+            'width': self.width,
+            'sampling': self._sampling,
             'Y': Y,
             'Cb': Cb_subsampled,
             'Cr': Cr_subsampled,
@@ -503,13 +508,18 @@ if __name__ == '__main__':
     decoder = DecompressingTableGreyscaleDecoder(translator, table)
 
     color = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp1\\data\\color\\1908iv.png")
-    rr = YCbCrSubsamplingEncoder([])
-    rr.apply(color)
+    rgb_encoder = YCbCrSubsamplingEncoder({
+        'Y': encoder,
+        'Cb': encoder,
+        'Cr': encoder,
+        'A': encoder
+    }, (2, 2))
+    rgb_decoded = rgb_encoder.apply(color)
+    pass
 
-    lena = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp1\\data\\test\\barbara.png")
-    encoded, compressed = encoder.apply(lena)
-    decoded = decoder.apply(compressed)
-
-    ski.io.imshow(decoded)
-    plt.show()
+    # lena = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp1\\data\\test\\barbara.png")
+    # encoded, compressed = encoder.apply(lena)
+    # decoded = decoder.apply(compressed)
+    # ski.io.imshow(decoded)
+    # plt.show()
 
