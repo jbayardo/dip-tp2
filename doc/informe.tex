@@ -59,7 +59,7 @@ las bibliotecas
 \texttt{scipy} para calcular la DCT,
 y \texttt{skimage} y \texttt{PIL} para manipular imágenes.
 
-\subsection{Compresión de imágenes en escala de gris}
+\subsection{Compresión de imágenes en tonos de gris}
 
 El método de compresión para imágenes en escala de gris
 depende de tres parámetros numéricos:
@@ -159,7 +159,7 @@ que es {\em lossy}:
   La implementación respeta el método usual de Huffman.
 \end{enumerate}
 
-\subsection{Compresión de imágenes a color}
+\subsection{Compresión de imágenes en color}
 
 Realizar la compresión de imágenes a color es en sí un proceso relativamente simple comparado con el de imágenes en escala de grises, ya que en su mayor parte consiste en reutilizar el mismo proceso. El rasgo más distintivo de la compresión a color tiene que ver con cómo los humanos percibimos el color: nuestros ojos son mucho más sensibles al brillo que a los colores en sí. Naturalmente, esto implica que un cambio en el brillo de una imágen tiene más chances de ser detectado por nuestros ojos, y por ende perder información sobre el mismo es lo que más queremos evitar en un esquema de compresión de imágenes.
 
@@ -426,7 +426,6 @@ de $k$. Podemos ver que el comportamiento es en efecto el esperado:
 \includegraphics[width=8cm]{../imgs/output/test_psnr/k_vs_psnr.png}
 \end{center}
 
-\newpage
 \subsection{Variación de los parámetros}
 
 \subsubsection{Variación del tamaño de bloque}
@@ -469,9 +468,6 @@ comprimida con tamaño de bloque $B = 1$:
 \includegraphics[width=7cm]{../imgs/output/gray_1_50_2000/img04.png}
 \end{center}
 
-\TODO{TODO}
-
-\newpage
 \subsubsection{Variación del factor de cuantización}
 \label{sec:variacion_factor_cuantizacion}
 
@@ -521,7 +517,7 @@ Para cada valor de $U$, en el siguiente gráfico se muestra un
 box plot del {\em peak signal-to-noise ratio} obtenido:\\
 \includegraphics[width=10cm]{../imgs/output/gray_plots/u_psnr.png}
 
-\section{Elección de parámetros}
+\subsection{Elección de parámetros}
 
 A efectos de elegir ``buenos parámetros'', se fijó
 el tamaño de bloque en $B = 8$. Esta elección se justifica con las
@@ -593,25 +589,23 @@ y una tasa de compresión no negligible de $2.47 : 1$:
 
 \TODO{TODO}
 
-\section{Transmisión progresiva}
+\section{Variantes del método}
 
-Tal vez la forma maś intuitiva de llegar a tener una transmisión progresiva de una imágen es simplemente dividirla por bloques y enviarlos serialmente a través de la red. El problema con esta técnica es que el tiempo de carga puede ser muy mala en imágenes que tarden en transmitirse: sólo podemos mostrar las partes de la imágen que ya recibimos, y por ende siempre hay una parte que estaría "en blanco".
+\subsection{Transmisión progresiva}
 
-El estandard de JPEG propone lo que el comité denomina "progressive mode". Este consiste en ir transmitiendo los coeficientes de la DCT para todos los bloques, llenando la cantidad de coeficientes por bloque a medida que pasa el tiempo. Por ejemplo, podríamos primero enviar todos los coeficientes DC, luego los primeros AC, y así sucesivamente.
+Tal vez la forma maś intuitiva de llegar a tener una transmisión progresiva de una imágen es simplemente dividirla por bloques y enviarlos serialmente a través de la red. El problema con esta técnica es que el tiempo de carga puede ser muy mala en imágenes que tarden en transmitirse: sólo podemos mostrar las partes de la imágen que ya recibimos, y por ende siempre hay una parte que estaría ``en blanco''.
 
-Queda claro que al agregar coeficientes la imágen se iría volviendo cada vez más nítida, ya que tendríamos más información para aproximarla. Esto reduce ampliamente el problema de las "áreas en blanco" al cargar la imágen: sólo precisariamos los primeros coeficientes de cada bloque para tener una aproximación razonable mientras que terminamos de cargar la imágen.
+El estandard de JPEG propone lo que el comité denomina ``progressive mode''. Este consiste en ir transmitiendo los coeficientes de la DCT para todos los bloques, llenando la cantidad de coeficientes por bloque a medida que pasa el tiempo. Por ejemplo, podríamos primero enviar todos los coeficientes DC, luego los primeros AC, y así sucesivamente.
 
-Hay múltiples formas de decidir exactamente qué enviar; las dos ideas más simples son enviar una cantidad limitada de coeficientes y enviar una aproximación de los coeficientes en lugar de los valores reales. Qué coeficientes enviar puede también realizarse de múltiples formas: el recorrido zig-zag que vimos anteriormente, una submatriz superior, los de mayor valor absoluto, etcétera. El paper leído recomienda seguir el orden zig-zag e ir agregando bits menos significativos en cada transmisión.
+Queda claro que al agregar coeficientes la imágen se iría volviendo cada vez más nítida, ya que tendríamos más información para aproximarla. Esto reduce ampliamente el problema de las ``áreas en blanco'' al cargar la imagen: sólo precisaríamos los primeros coeficientes de cada bloque para tener una aproximación razonable mientras que terminamos de cargar la imagen.
+
+Hay múltiples formas de decidir exactamente qué enviar; las dos ideas más simples son enviar una cantidad limitada de coeficientes y enviar una aproximación de los coeficientes en lugar de los valores reales. Qué coeficientes enviar puede también realizarse de múltiples formas: el recorrido zig-zag que vimos anteriormente, una submatriz superior, los de mayor valor absoluto, etcétera. El paper referido por el enunciado~[1] recomienda seguir el orden zig-zag e ir agregando bits menos significativos en cada transmisión.
 
 Cabe destacar que esto es ampliamente utilizado en la práctica (basta con utilizar un browser sobre una conexión lenta para darse cuenta), ya que en general el bottleneck de cualquier aplicación que transmite información a través de una red está precisamente en la entrada y salida, más que en el uso de CPU.
 
-No realizamos una implementación de esto por no tener suficiente tiempo para experimentar, pero ambas implementaciones realizadas son fácilmente extensibles para lograr este propósito: basta con agregar un buffer entre el código responsable de quantizar, y el código responsable de hacer entropy coding; este buffer sería leído cuando se deseé enviar la imágen, y se correría entropy coding de alguna forma sobre el mismo antes de enviarlo.
+No realizamos una implementación de esto por no tener suficiente tiempo para experimentar, pero ambas implementaciones realizadas son fácilmente extensibles para lograr este propósito: basta con agregar un buffer entre el código responsable de quantizar, y el código responsable de hacer entropy coding; este buffer sería leído cuando se desee enviar la imágen, y se correría entropy coding de alguna forma sobre el mismo antes de enviarlo.
 
-
-
-\subsection{Variantes del algoritmo}
-
-\subsubsection{Matriz de factores de cuantización}
+\subsection{Matriz de factores de cuantización}
 
 En general, es esperable que los coeficientes de la DCT de menor frecuencia
 sean más relevantes que los coeficientes de menor frecuencia
@@ -651,9 +645,7 @@ Se ensayó el mismo experimento también con otras matrices $Q$.
 En ningún caso se encontró un comportamiento claramente superador del método
 original.
 
-\TODO{TODO}
-
-\subsubsection{{\em Wavelet transform}}
+\subsection{{\em Wavelet transform}}
 
   \TODO{TODO}
 
@@ -717,6 +709,12 @@ img9 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img09.png} &&&&
 \caption{Imágenes comprimidas con parámetros $B=8, Q=50, U=2000$}
 \label{fig:imagenes_de_prueba_comprimidas_8_50_2000}
 \end{figure}
+
+\section*{Referencias}
+
+\begin{itemize}
+\item[[1]] .
+\end{itemize}
 
 \end{document}
 
