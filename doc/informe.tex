@@ -157,6 +157,22 @@ que es {\em lossy}:
   El último paso de la compresión para imágenes en escalas de
   gris es la codificación Huffman de la lista de coeficientes.
   La implementación respeta el método usual de Huffman.
+\item
+ {\bf Compresión con \texttt{zlib}}.
+ Aun después de la compresión usando la codificación de Huffman,
+ la imagen comprimida resultaba tener mucha redundancia.
+ Se ensayaron varias alternativas para eliminar esta redundancia:
+ \begin{enumerate}
+ \item Aplicar nuevamente Huffman.
+ \item Codificar la salida con {\em run-length encoding} para los bytes
+       \texttt{0x00} y \texttt{0xff},
+       que eran los que tenían mayores repeticiones.
+ \item Comprimir la salida con el algoritmo de Lempel--Ziv--Welch.
+ \end{enumerate}
+ Este último método fue con el que consistentemente se obtuvieron
+ mejores tasas de compresión.
+ Se utilizó el algoritmo de Lempel--Ziv--Welch provisto por la
+ biblioteca \texttt{zlib}.
 \end{enumerate}
 
 \subsection{Compresión de imágenes en color}
@@ -481,8 +497,8 @@ $Q \in \set{12,25,50,100,200,400,800}$.
 Para cada valor de $Q$, en el siguiente gráfico se muestra un
 box plot de la tasa de compresión y el PSNR obtenidos:\\
 \begin{center}
-\includegraphics[width=10cm]{../imgs/output/gray_plots/q_rate.png}
-\includegraphics[width=10cm]{../imgs/output/gray_plots/q_psnr.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/q_rate.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/q_psnr.png}
 \end{center}
 
 Como es de esperarse, la tasa de compresión aumenta a medida que
