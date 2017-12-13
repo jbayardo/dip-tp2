@@ -1,15 +1,14 @@
 #!/usr/bin/env python2
 # coding:utf-8:
-#from __future__ import unicode_literals
-
+from __future__ import print_function
 import os
-import sys
-import matplotlib.pyplot as plt
 import subprocess as sp
+import matplotlib.pyplot as plt
 
 jj_path = '../../src/jj.py'
 input_dir = '../input/imgs_gray/'
 plot_dir = 'gray_plots'
+
 
 def compression_rates(b, q, u):
     output_dir = 'gray_{b}_{q}_{u}'.format(b=b, q=q, u=u)
@@ -19,9 +18,10 @@ def compression_rates(b, q, u):
         img2 = os.path.join(output_dir, image.replace('.png', '.j'))
         if not os.path.exists(img2):
             continue
-        rate = sp.check_output([jj_path, '--rate', img1, img2])
+        rate = sp.check_output(['python', jj_path, '--rate', img1, img2])
         rates.append(float(rate))
     return sorted(rates)
+
 
 def peak_signal_to_noise_ratio(b, q, u):
     output_dir = 'gray_{b}_{q}_{u}'.format(b=b, q=q, u=u)
@@ -31,12 +31,13 @@ def peak_signal_to_noise_ratio(b, q, u):
         img2 = os.path.join(output_dir, image)
         if not os.path.exists(img2):
             continue
-        psnr = sp.check_output([jj_path, '--psnr', img1, img2])
+        psnr = sp.check_output(['python', jj_path, '--psnr', img1, img2])
         psnrs.append(float(psnr))
     return sorted(psnrs)
 
+
 def plot(name, xlabel, ylabel, fn, bs, qs, us):
-    print 'Graficando %s' % (name,)
+    print('Graficando %s' % (name,))
     plt.clf()
     data = []
     for b in bs:
@@ -60,6 +61,7 @@ def plot(name, xlabel, ylabel, fn, bs, qs, us):
     plt.ylabel(ylabel)
     plt.savefig(os.path.join(plot_dir, name + '.png'))
 
+
 bs = [2 ** i for i in range(2, 10)]
 qs = [int(2 ** i * 12.5) for i in range(7)]
 us = [int(2 ** i * 31.25) for i in range(10)]
@@ -72,6 +74,7 @@ plot(
     compression_rates,
     bs, [50], [2000],
 )
+
 plot(
     'b_psnr',
     u'Tamaño de bloque (B)',
@@ -79,6 +82,7 @@ plot(
     peak_signal_to_noise_ratio,
     bs, [50], [2000],
 )
+
 plot(
     'q_rate',
     u'Factor de cuantización (Q)',
@@ -86,6 +90,7 @@ plot(
     compression_rates,
     [8], qs, [2000],
 )
+
 plot(
     'q_psnr',
     u'Factor de cuantización (Q)',
@@ -93,6 +98,7 @@ plot(
     peak_signal_to_noise_ratio,
     [8], qs, [2000],
 )
+
 plot(
     'u_rate',
     u'Umbral de cuantización (U)',
@@ -100,6 +106,7 @@ plot(
     compression_rates,
     [8], [50], us,
 )
+
 plot(
     'u_psnr',
     u'Umbral de cuantización (U)',
@@ -108,7 +115,6 @@ plot(
     [8], [50], us,
 )
 
-
 plot(
     'ualt_rate',
     u'Umbral de cuantización (U)',
@@ -116,6 +122,7 @@ plot(
     compression_rates,
     [8], [50], us_alt,
 )
+
 plot(
     'ualt_psnr',
     u'Umbral de cuantización (U)',
@@ -123,4 +130,3 @@ plot(
     peak_signal_to_noise_ratio,
     [8], [50], us_alt,
 )
-
