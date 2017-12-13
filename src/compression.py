@@ -671,10 +671,12 @@ if __name__ == '__main__':
         left = ski.io.imread(args.input)
         right = ski.io.imread(args.output)
         print(psnr(left, right))
+        exit(0)
     elif args.rate:
         original_image = ski.io.imread(args.input)
         rate = float(original_image.shape[0] * original_image.shape[1]) / os.stat(args.output).st_size
         print(rate)
+        exit(0)
     elif not (args.compress or args.decompress):
         raise NotImplementedError('Unknown operation mode')
 
