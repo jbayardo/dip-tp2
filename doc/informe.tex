@@ -182,7 +182,7 @@ Realizar la compresión de imágenes a color es en sí un proceso relativamente 
 \begin{enumerate}
 \item
 	{\bf Convertir de RGB a YCbCr}.
-	En este último, al igual que RGB, tenemos tres canales; el primero es precisamente el brillo que tenemos en el pixel, mientras que Cb y Cr denotan el color en el píxel. Es efecto, en el primer paso estamos separando el brillo de la imagen de su color. La conversión en YCbCr se lleva a cabo a través de la siguiente cuenta:
+	En este último, al igual que RGB, tenemos tres canales; el primero es precisamente el brillo que tenemos en el píxel, mientras que Cb y Cr denotan la tonalidad o matiz (``color'') en el píxel. Es efecto, en el primer paso estamos separando el brillo de la imagen de su color. La conversión en YCbCr se lleva a cabo a través de las siguientes ecuaciones:
 
 	\begin{align}
 		Y &=&  0 &+ (0.299  & \cdot R) &+ (0.587  & \cdot G) &+ (0.114  & \cdot B)\\
@@ -191,9 +191,9 @@ Realizar la compresión de imágenes a color es en sí un proceso relativamente 
 	\end{align}
 
 \item
-	{\bf Explotar la falta de detalle} con la que perciben nuestros ojos al color: en lugar de quedarnos con Cb y Cr (que tienen el mismo tamaño de la imagen cada uno), utilizamos lo que se denomina chroma subsampling. La idea es aplicar una transformación local por bloques que reduzca la cantidad de información que tenemos sobre cada píxel. A modo de ejemplo, podríamos tomar bloques de $2x2$ y utilizar la mediana del bloque como representante del mismo; esto nos reduciría a la mitad el tamaño de los canales Cb y Cr, por lo que el tamaño de la imagen se reduciría de $3n$ a $2n$ píxeles.
+	{\bf Explotar la falta de detalle} con la que perciben nuestros ojos al color: en lugar de quedarnos con Cb y Cr (que tienen el mismo tamaño de la imagen cada uno), utilizamos lo que se denomina {\em chroma subsampling}. La idea es aplicar una transformación local por bloques que reduzca la cantidad de información que tenemos sobre cada píxel. A modo de ejemplo, podríamos tomar bloques de $2 \times 2$ y utilizar la mediana del bloque como representante del mismo; esto nos reduciría a la mitad el tamaño de los canales Cb y Cr, por lo que el tamaño de la imagen se reduciría de $3n$ a $2n$ píxeles.
 
-	En sí mismo, el paso de chroma subsampling puede ser arbitrariamente complejo: está estudiado que el ojo puede soportar más perdida de color en bloques que son más anchos que altos, y demás. Qué tipo de subsampling es apropiado para la aplicación que se está realizando es altamente dependiente; no es el mismo tipo de sampling que se utiliza para video, que para imágenes fijas en la web. Esto complejiza considerablemente las posibles formas de elegir qué sample tomar para representar a un bloque de píxeles.
+	En sí mismo, el paso de {\em chroma subsampling} puede ser arbitrariamente complejo: está estudiado que el ojo puede soportar más perdida de color en bloques que son más anchos que altos, y demás. Qué tipo de subsampling es apropiado para la aplicación que se está realizando es altamente dependiente; no es el mismo tipo de sampling que se utiliza para video, que para imágenes fijas en la web. Esto complejiza considerablemente las posibles formas de elegir qué sample tomar para representar a un bloque de píxeles.
 
 \item
 	{\bf Comprimir}.
@@ -213,13 +213,15 @@ El caso de descompresión es exactamente el inverso. La única diferencia es que
 \section{Experimentación}
 
 Se eligieron diez imágenes de distinta naturaleza, todas ellas de
-$1000 \times 1000$ píxeles. Se muestran en la Figura~\ref{fig:imagenes_de_prueba_gris} (en el Apéndice).
+$1000 \times 1000$ píxeles.
+Las imágenes elegidas se exhiben
+en la Figura~\ref{fig:imagenes_de_prueba_gris} (en el Apéndice).
 
 Como conjunto de parámetros de referencia, se tomaron:
 {\bf tamaño de bloque} $B = 8$,
 {\bf factor de cuantización} $Q = 50$,
 y {\bf umbral de cuantización} $U = 2000$.
-Las imágenes resultantes se muestran en
+Las imágenes resultantes se exhiben en
 la Figura~\ref{fig:imagenes_de_prueba_comprimidas_8_50_2000}
 (en el Apéndice).
 Este conjunto de parámetros se utiliza a modo de control,
@@ -236,9 +238,8 @@ La transformada discreta del coseno, al igual que otras transformadas
 como la de Fourier, aproxima una función objetivo
 mediante una suma de funciones continuas. 
 Cuando la función objetivo presenta un cambio abrupto,
-la aproximación da lugar a un efecto de
-reverberación.
-Esto se manifiesta visualmente como un ``halo'' en los bordes.
+la aproximación da lugar a un efecto de ``eco''.
+Esto se manifiesta visualmente como un halo que circunda los bordes.
 
 Para verificar este fenómeno, se comprimieron dos imágenes de
 $200 \times 200$.
@@ -248,8 +249,8 @@ La segunda imagen es un círculo blanco sobre fondo negro.
 En ambas imágenes comprimidas puede apreciarse el {\em ringing effect}
 visualmente:
 los bordes claramente delimitados entre la región blanca y la
-región negra pasan a estar contaminados por un halo de
-franjas blancas y negras (y de tonos de gris no apreciables
+región negra pasan a encontrarse contaminados por un halo de
+franjas blancas y negras (y también tonos de gris, no apreciables
 a simple vista).
 La situación es particularmente severa en el caso del círculo.
 
@@ -591,10 +592,10 @@ y por lo tanto no hay un único valor universal correcto para $Q$,
 sino que se trata de un {\em tradeoff}, sumamente dependiente del
 contexto de aplicación.
 
-Por otro lado, el valor del factor de cuantización $Q = 25$
-parece razonable,
-ya que alcanza tasas de compresión de un orden de magnitud
-(entre 10 y 20 aproximadamente), manteniendo el PSNR sobre 30
+Por otro lado, parece razonable proponer como valor del factor de cuantización
+$Q = 25$,
+ya que en este valor se alcanzan tasas de compresión de un orden de magnitud
+(superando $10:1$), y manteniendo el PSNR sobre $30$dB
 de manera consistente.
 
 La peor calidad se alcanza en el caso de imágenes con bordes delineados,
