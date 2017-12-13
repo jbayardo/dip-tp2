@@ -87,37 +87,93 @@ def inverse_split_blocks(block_matrix):
             img.paste(block, (block.width * i, block.height * j))
     return img
 
-def dct2(matrix):
-    "Perform the 2-dimensional discrete cosine transform."
-    return scipy.fftpack.dct(
-             scipy.fftpack.dct(matrix.T, norm='ortho').T,
-             norm='ortho'
-           )
+def matr(n):
+    m = []
+    for i in range(n):
+        row = []
+        for j in range(n):
+            row.append(0.0)
+        m.append(numpy.array(row))
+    return numpy.array(m)
 
-def inverse_dct2(matrix):
-    "Perform the inverse 2-dimensional discrete cosine transform."
-    return scipy.fftpack.idct(
-             scipy.fftpack.idct(matrix.T, norm='ortho').T,
-             norm='ortho'
-           )
+def wavelet(matrix):
+    "Perform the 2-dimensional discrete wavelet transform."
+    n = len(matrix)
 
-def blocks_dct2(block_matrix):
-    "Perform the DCT on each block of the matrix."
+    # n should be a power of 2
+    p = 0
+    while 2 ** p < n:
+        p += 1
+    assert 2 ** p == n
+
+    for t in range(p):
+        new_matrix = matr(n)
+        for i in range(n):
+            for j in range(n // 2):
+                a = int(matrix[i][2 * j])
+                b = int(matrix[i][2 * j + 1])
+                new_matrix[i][j] = a
+                new_matrix[i][n // 2 + j] = b - a
+        matrix = new_matrix
+        new_matrix = matr(n)
+        for i in range(n // 2):
+            for j in range(n):
+                a = int(matrix[2 * i][j])
+                b = int(matrix[2 * i + 1][j])
+                new_matrix[i][j] = a
+                new_matrix[n // 2 + i][j] = b - a
+        matrix = new_matrix
+    return matrix
+
+def inverse_wavelet(matrix):
+    "Perform the inverse 2-dimensional discrete wavelet transform."
+
+    n = len(matrix)
+
+    # n should be a power of 2
+    p = 0
+    while 2 ** p < n:
+        p += 1
+    assert 2 ** p == n
+
+    for t in range(p):
+        new_matrix = matr(n)
+        for i in range(n // 2):
+            for j in range(n):
+                a = int(matrix[i][j])
+                d = int(matrix[n // 2 + i][j])
+                new_matrix[2 * i][j] = a
+                new_matrix[2 * i + 1][j] = a + d
+        matrix = new_matrix
+        new_matrix = matr(n)
+        for i in range(n):
+            for j in range(n // 2):
+                a = int(matrix[i][j])
+                d = int(matrix[i][n // 2 + j])
+                new_matrix[i][2 * j] = a
+                new_matrix[i][2 * j + 1] = a + d
+        matrix = new_matrix
+    return matrix
+
+def blocks_wavelet(block_matrix):
+    "Perform the DWT on each block of the matrix."
     dct_matrix = []
     for block_row in block_matrix:
         dct_row = []
         for block in block_row:
-            dct_row.append(dct2(image_to_matrix(block)))
+            dct_row.append(wavelet(image_to_matrix(block)))
         dct_matrix.append(numpy.array(dct_row))
     return numpy.array(dct_matrix)
 
-def inverse_blocks_dct2(dct_matrix):
-    "Perform the inverse DCT on each block of the matrix."
+def inverse_blocks_wavelet(dct_matrix):
+    "Perform the inverse DWT on each block of the matrix."
     block_matrix = []
     for dct_row in dct_matrix:
         block_row = []
         for dct_elem in dct_row:
-            block_row.append(inverse_image_to_matrix(inverse_dct2(dct_elem)))
+            block_row.append(inverse_image_to_matrix(
+                inverse_wavelet(dct_elem))
+            )
         block_matrix.append(block_row)
     return block_matrix
 
@@ -379,7 +435,7 @@ def simple_jpeg_compression(img,
     "Compress an image using the given parameters."
     img_padded = pad_image(img, block_size, block_size)
     block_matrix = split_blocks(img_padded, block_size)
-    dct_matrix = blocks_dct2(block_matrix)
+    dct_matrix = blocks_wavelet(block_matrix)
     dct_matrix_quantized = quantize_blocks(
                              quantization_factor,
                              quantization_threshold,
@@ -420,7 +476,7 @@ def simple_jpeg_decompression(data):
                    quantization_factor,
                    dct_matrix_quantized
                  )
-    block_matrix = inverse_blocks_dct2(dct_matrix)
+    block_matrix = inverse_blocks_wavelet(dct_matrix)
     img_padded = inverse_split_blocks(block_matrix)
     img = inverse_pad_image(img_size, img_padded)
     return img

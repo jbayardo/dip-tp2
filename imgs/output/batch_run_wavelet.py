@@ -2,11 +2,11 @@
 import os
 import subprocess as sp
 
-jj_path = '../../src/jj.py'
+jj_path = '../../src/jj_wavelet.py'
 input_dir = '../input/imgs_gray/'
 
 def batch_run(b, q, u):
-    output_dir = 'gray_{b}_{q}_{u}'.format(b=b, q=q, u=u)
+    output_dir = 'wavelet_{b}_{q}_{u}'.format(b=b, q=q, u=u)
     sp.check_call(['mkdir', '-p', output_dir])
     for image in sorted(os.listdir('../input/imgs_gray/')):
 
@@ -29,6 +29,8 @@ def batch_run(b, q, u):
             os.path.join(output_dir, image)
         ])
 
+batch_run(256, 50, 2000)
+
 #for i in range(2, 10):
 #    b = 2 ** i
 #    print 'Block size = %u' % (b,)
@@ -39,17 +41,8 @@ def batch_run(b, q, u):
 #    print 'Quantization factor = %u' % (q,)
 #    batch_run(8, q, 2000)
 #
-#for i in range(10):
-#    u = int(2 ** i * 31.25)
-#    print 'Quantization threshold = %u' % (u,)
-#    batch_run(8, 50, u)
-#
 #for i in range(1, 11):
 #    u = int(5 * i)
 #    print 'Quantization threshold = %u' % (u,)
 #    batch_run(8, 50, u)
-
-for q in range(13, 26):
-    print 'Quantization factor = %u' % (q,)
-    batch_run(8, q, 1000000)
 

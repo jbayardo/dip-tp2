@@ -135,18 +135,27 @@ def map_blocks(f, matrix):
         result_matrix = numpy.array(result_matrix)
     return result_matrix
 
-def quantize_blocks(quantization_factor, quantization_threshold, dct_matrix):
+quant_table = numpy.array([
+    [20 * i * j for j in range(1, 9)] for i in range(1, 9)
+])
+
+def quantize_blocks(quantization_threshold, dct_matrix):
     """
     Apply quantization on each block of the matrix,
     and.
     This is the only lossy component in the compression pipeline.
     """
+
     def quantize_block(block):
         qblock = [] 
+        i = -1
         for row in block:
+            i += 1
             qrow = []
+            j = -1
             for elem in row:
-                qelem = int(elem / quantization_factor)
+                j += 1
+                qelem = int(elem / quant_table[i][j])
                 if qelem > quantization_threshold:
                     qelem = quantization_threshold
                 elif qelem < -quantization_threshold:
@@ -156,14 +165,18 @@ def quantize_blocks(quantization_factor, quantization_threshold, dct_matrix):
         return qblock
     return map_blocks(quantize_block, dct_matrix)
 
-def inverse_quantize_blocks(quantization_factor, dct_matrix_quantized):
+def inverse_quantize_blocks(dct_matrix_quantized):
     "Apply inverse quantization on each block of the matrix."
     def inverse_quantize_block(qblock):
         block = [] 
+        i = -1
         for qrow in qblock:
+            i += 1
             row = []
+            j = -1
             for qelem in qrow:
-                elem = qelem * quantization_factor
+                j += 1
+                elem = qelem * quant_table[i][j]
                 row.append(elem)
             block.append(row)
         return block
@@ -373,7 +386,6 @@ def run(string):
 
 def simple_jpeg_compression(img,
                             block_size=8,
-                            quantization_factor=10,
                             quantization_threshold=1000,
                            ):
     "Compress an image using the given parameters."
@@ -381,7 +393,6 @@ def simple_jpeg_compression(img,
     block_matrix = split_blocks(img_padded, block_size)
     dct_matrix = blocks_dct2(block_matrix)
     dct_matrix_quantized = quantize_blocks(
-                             quantization_factor,
                              quantization_threshold,
                              dct_matrix
                            )
@@ -391,7 +402,7 @@ def simple_jpeg_compression(img,
                          img.size,
                          img_padded.size,
                          block_size,
-                         quantization_factor,
+                         0,
                          huff_tree,
                          huff_bits
                        )
@@ -406,7 +417,7 @@ def simple_jpeg_decompression(data):
       img_size,
       img_padded_size,
       block_size,
-      quantization_factor,
+      _,
       huff_tree,
       huff_bits
     ) = inverse_pack_data(compressed_image)
@@ -417,7 +428,6 @@ def simple_jpeg_decompression(data):
                              dct_matrix_dc
                            )
     dct_matrix = inverse_quantize_blocks(
-                   quantization_factor,
                    dct_matrix_quantized
                  )
     block_matrix = inverse_blocks_dct2(dct_matrix)
@@ -449,7 +459,6 @@ def usage():
       '  {prog} --rate orig.png compr.j  Calculate compression rate.',
       'Options for compression:',
       '  -b block_size[=8]',
-      '  -q quantization_factor[=50]',
       '  -u quantization_threshold[=2000]',
     ]
     sys.stderr.write('\n'.join(msg).format(prog=sys.argv[0]) + '\n')
@@ -465,7 +474,6 @@ def main():
     args = []
     options = {
         'block_size': 8,
-        'quantization_factor': 50,
         'quantization_threshold': 2000,
     }
     while len(argv) > 0:
@@ -473,9 +481,6 @@ def main():
         if opt == '-b':
             if len(argv) == 0: usage()
             options['block_size'] = int(argv.pop(0))
-        elif opt == '-q':
-            if len(argv) == 0: usage()
-            options['quantization_factor'] = int(argv.pop(0))
         elif opt == '-u':
             if len(argv) == 0: usage()
             options['quantization_threshold'] = int(argv.pop(0))
@@ -489,7 +494,6 @@ def main():
                 simple_jpeg_compression(
                   img(infile),
                   block_size=options['block_size'],
-                  quantization_factor=options['quantization_factor'],
                   quantization_threshold=options['quantization_threshold'],
                 )
             )

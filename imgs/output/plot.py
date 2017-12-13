@@ -64,63 +64,79 @@ bs = [2 ** i for i in range(2, 10)]
 qs = [int(2 ** i * 12.5) for i in range(7)]
 us = [int(2 ** i * 31.25) for i in range(10)]
 us_alt = [5 * i for i in range(1, 11)]
+qs_alt = [q for q in range(1, 26)]
+
+#plot(
+#    'b_rate',
+#    u'Tamaño de bloque (B)',
+#    u'Tasa de compresión',
+#    compression_rates,
+#    bs, [50], [2000],
+#)
+#plot(
+#    'b_psnr',
+#    u'Tamaño de bloque (B)',
+#    u'PSNR',
+#    peak_signal_to_noise_ratio,
+#    bs, [50], [2000],
+#)
+#plot(
+#    'q_rate',
+#    u'Factor de cuantización (Q)',
+#    u'Tasa de compresión',
+#    compression_rates,
+#    [8], qs, [2000],
+#)
+#plot(
+#    'q_psnr',
+#    u'Factor de cuantización (Q)',
+#    u'PSNR',
+#    peak_signal_to_noise_ratio,
+#    [8], qs, [2000],
+#)
+#plot(
+#    'u_rate',
+#    u'Umbral de cuantización (U)',
+#    u'Tasa de compresión',
+#    compression_rates,
+#    [8], [50], us,
+#)
+#plot(
+#    'u_psnr',
+#    u'Umbral de cuantización (U)',
+#    u'PSNR',
+#    peak_signal_to_noise_ratio,
+#    [8], [50], us,
+#)
+#
+#
+#plot(
+#    'ualt_rate',
+#    u'Umbral de cuantización (U)',
+#    u'Tasa de compresión',
+#    compression_rates,
+#    [8], [50], us_alt,
+#)
+#plot(
+#    'ualt_psnr',
+#    u'Umbral de cuantización (U)',
+#    u'PSNR',
+#    peak_signal_to_noise_ratio,
+#    [8], [50], us_alt,
+#)
 
 plot(
-    'b_rate',
-    u'Tamaño de bloque (B)',
-    u'Tasa de compresión',
-    compression_rates,
-    bs, [50], [2000],
-)
-plot(
-    'b_psnr',
-    u'Tamaño de bloque (B)',
-    u'PSNR',
-    peak_signal_to_noise_ratio,
-    bs, [50], [2000],
-)
-plot(
-    'q_rate',
+    'qalt_rate',
     u'Factor de cuantización (Q)',
     u'Tasa de compresión',
     compression_rates,
-    [8], qs, [2000],
+    [8], qs_alt, [1000000],
 )
 plot(
-    'q_psnr',
+    'qalt_psnr',
     u'Factor de cuantización (Q)',
     u'PSNR',
     peak_signal_to_noise_ratio,
-    [8], qs, [2000],
-)
-plot(
-    'u_rate',
-    u'Umbral de cuantización (U)',
-    u'Tasa de compresión',
-    compression_rates,
-    [8], [50], us,
-)
-plot(
-    'u_psnr',
-    u'Umbral de cuantización (U)',
-    u'PSNR',
-    peak_signal_to_noise_ratio,
-    [8], [50], us,
-)
-
-
-plot(
-    'ualt_rate',
-    u'Umbral de cuantización (U)',
-    u'Tasa de compresión',
-    compression_rates,
-    [8], [50], us_alt,
-)
-plot(
-    'ualt_psnr',
-    u'Umbral de cuantización (U)',
-    u'PSNR',
-    peak_signal_to_noise_ratio,
-    [8], [50], us_alt,
+    [8], qs_alt, [1000000],
 )
 
