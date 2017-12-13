@@ -157,19 +157,6 @@ que es {\em lossy}:
   El último paso de la compresión para imágenes en escalas de
   gris es la codificación Huffman de la lista de coeficientes.
   La implementación respeta el método usual de Huffman.
-\item
-  {\bf Compresión con \texttt{zlib}}.
-  Aun después de la compresión usando la codificación de Huffman,
-  la imagen comprimida resultaba tener mucha redundancia.
-  Se ensayaron varias alternativas para eliminar esta redundancia:
-  \begin{enumerate}
-  \item Aplicar nuevamente Huffman.
-  \item Codificar la salida con {\em run-length encoding} para los bytes \texttt{0x00} y \texttt{0xff},
-        que eran los que tenían mayores repeticiones.
-  \item Comprimir la salida con el algoritmo de Lempel--Ziv--Welch.
-  \end{enumerate}
-  Este último método fue con el que consistentemente se obtuvieron mejores tasas de compresión.
-  Se utilizó el algoritmo de Lempel--Ziv--Welch provisto por la biblioteca \texttt{zlib}.
 \end{enumerate}
 
 \subsection{Compresión de imágenes a color}
@@ -439,6 +426,7 @@ de $k$. Podemos ver que el comportamiento es en efecto el esperado:
 \includegraphics[width=8cm]{../imgs/output/test_psnr/k_vs_psnr.png}
 \end{center}
 
+\newpage
 \subsection{Variación de los parámetros}
 
 \subsubsection{Variación del tamaño de bloque}
@@ -451,22 +439,24 @@ y el tamaño de bloque variando con valores
 $B \in \set{1,2,4,8,16,32,64,128,256,512}$.
 
 Para cada valor de $B$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión y el
-{\em peak signal-to-noise ratio} obtenidos:\\
-\begin{center}
-\includegraphics[width=7cm]{../imgs/output/gray_plots/b_rate.png}
-\includegraphics[width=7cm]{../imgs/output/gray_plots/b_psnr.png}
-\end{center}
+box plot de la tasa de compresión obtenida:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/b_rate.png}
+
+Para cada valor de $B$, en el siguiente gráfico se muestra un
+box plot del {\em peak signal-to-noise ratio} obtenido:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/b_psnr.png}
 
 Puede apreciarse que hay menor varianza en la tasa de compresión
 obtenida a medida que se agranda el tamaño de bloque,
 mientras que hay mayor varianza en la calidad de la imagen obtenida.
 
-Los tamaños de bloque $B = 16$ y $B = 32$ parecen ser los ideales,
-ya que en dichos valores se alcanza una tasa de compresión cercana a la mejor en promedio,
-y se alcanza también un valor de PSNR cercano al mejor en promedio,
-con varianzas relativamente baja.
+La mejor tasa de compresión se alcanza con el tamaño de bloque
+$B = 8$. El mejor valor de PSNR en promedio se alcanza también
+en $B = 8$.
 
+\TODO{TODO}
+
+\newpage
 \subsubsection{Variación del factor de cuantización}
 
 Para estudiar la variación del factor de cuantización, se ejecutó el
@@ -477,12 +467,12 @@ y el factor de cuantización variando con valores
 $Q \in \set{12,25,50,100,200,400,800}$.
 
 Para cada valor de $Q$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión y el
-{\em peak signal-to-noise ratio} obtenidos:\\
-\begin{center}
-\includegraphics[width=7cm]{../imgs/output/gray_plots/q_rate.png}
-\includegraphics[width=7cm]{../imgs/output/gray_plots/q_psnr.png}
-\end{center}
+box plot de la tasa de compresión obtenida:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/q_rate.png}
+
+Para cada valor de $Q$, en el siguiente gráfico se muestra un
+box plot del {\em peak signal-to-noise ratio} obtenido:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/q_psnr.png}
 
 Como es de esperarse, la tasa de compresión aumenta a medida que
 se aumenta el factor de cuantización, ya que, a mayor valor de $Q$,
@@ -491,6 +481,9 @@ Por otro lado, aumentar el factor de cuantización produce obviamente
 una reducción en la calidad de la imagen ya que a mayor valor de $Q$
 el método de compresión es más {\em lossy}.
 
+\TODO{TODO}
+
+\newpage
 \subsubsection{Variación del umbral de cuantización}
 
 Para estudiar la variación del umbral de cuantización, se ejecutó el
@@ -501,30 +494,26 @@ y el umbral de cuantización variando con valores
 $U \in \set{31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000}$.
 
 Para cada valor de $U$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión y el
-{\em peak signal-to-noise ratio} obtenidos:\\
-\begin{center}
-\includegraphics[width=7cm]{../imgs/output/gray_plots/u_rate.png}
-\includegraphics[width=7cm]{../imgs/output/gray_plots/u_psnr.png}
-\end{center}
+box plot de la tasa de compresión obtenida:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/u_rate.png}
 
-No se encuentran diferencias significativas para valores de $U$
-superiores a 31 en el rango de valores elegido.
-Esto sugiere que el rango en el que se hizo variar el valor del parámetro $U$
-está mal elegido.
-Se repitió el análisis para el rango de valores
-$U \in \set{5, 10, 15, 20, 25, 30, 35, 40, 45, 50}$.
-\begin{center}
-\includegraphics[width=7cm]{../imgs/output/gray_plots/ualt_rate.png}
-\includegraphics[width=7cm]{../imgs/output/gray_plots/ualt_psnr.png}
-\end{center}
-En este rango sí es posible apreciar, como es de esperarse, que
-a medida que aumenta el valor de $U$,
-la tasa de compresión disminuye e, inversamente, la calidad de
-la imagen aumenta.
+Para cada valor de $U$, en el siguiente gráfico se muestra un
+box plot del {\em peak signal-to-noise ratio} obtenido:\\
+\includegraphics[width=10cm]{../imgs/output/gray_plots/u_psnr.png}
 
-\subsection{Elección de parámetros}
+\section{Transmisión progresiva}
 
+Tal vez la forma maś intuitiva de llegar a tener una transmisión progresiva de una imágen es simplemente dividirla por bloques y enviarlos serialmente a través de la red. El problema con esta técnica es que el tiempo de carga puede ser muy mala en imágenes que tarden en transmitirse: sólo podemos mostrar las partes de la imágen que ya recibimos, y por ende siempre hay una parte que estaría "en blanco".
+
+El estandard de JPEG propone lo que el comité denomina "progressive mode". Este consiste en ir transmitiendo los coeficientes de la DCT para todos los bloques, llenando la cantidad de coeficientes por bloque a medida que pasa el tiempo. Por ejemplo, podríamos primero enviar todos los coeficientes DC, luego los primeros AC, y así sucesivamente.
+
+Queda claro que al agregar coeficientes la imágen se iría volviendo cada vez más nítida, ya que tendríamos más información para aproximarla. Esto reduce ampliamente el problema de las "áreas en blanco" al cargar la imágen: sólo precisariamos los primeros coeficientes de cada bloque para tener una aproximación razonable mientras que terminamos de cargar la imágen.
+
+Hay múltiples formas de decidir exactamente qué enviar; las dos ideas más simples son enviar una cantidad limitada de coeficientes y enviar una aproximación de los coeficientes en lugar de los valores reales. Qué coeficientes enviar puede también realizarse de múltiples formas: el recorrido zig-zag que vimos anteriormente, una submatriz superior, los de mayor valor absoluto, etcétera. El paper leído recomienda seguir el orden zig-zag e ir agregando bits menos significativos en cada transmisión.
+
+Cabe destacar que esto es ampliamente utilizado en la práctica (basta con utilizar un browser sobre una conexión lenta para darse cuenta), ya que en general el bottleneck de cualquier aplicación que transmite información a través de una red está precisamente en la entrada y salida, más que en el uso de CPU.
+
+No realizamos una implementación de esto por no tener suficiente tiempo para experimentar, pero ambas implementaciones realizadas son fácilmente extensibles para lograr este propósito: basta con agregar un buffer entre el código responsable de quantizar, y el código responsable de hacer entropy coding; este buffer sería leído cuando se deseé enviar la imágen, y se correría entropy coding de alguna forma sobre el mismo antes de enviarlo.
 
 \section{Conclusiones}
 
