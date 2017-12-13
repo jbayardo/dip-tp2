@@ -733,24 +733,27 @@ if __name__ == '__main__':
 
         compressed_image = None
         if len(raw_image.shape) == 2:
-            compressed_image= greyscale_encoder.apply(raw_image)
-            ski.io.imsave(args.output, compressed_image)
+            compressed_image = greyscale_encoder.apply(raw_image)
         else:
             assert len(raw_image.shape) == 3
             assert raw_image.shape[2] in [3, 4]
             compressed_image = color_encoder.apply(raw_image)
-            pickle.dump(compressed_image, args.output)
-    elif args.decompress:
-        multichannel = False
-        compressed_image = None
-        try:
-            compressed_image = ski.io.imread(args.input)
-        except:
-            multichannel = True
 
-        raw_image = None
-        if multichannel:
-            compressed_image = pickle.load(args.input)
+        with open(args.output, 'wb') as handle:
+            pickle.dump({
+                'kind': len(raw_image.shape),
+                'image': compressed_image
+            }, handle)
+    elif args.decompress:
+        compressed_image = None
+        with open(args.input, 'rb') as handle:
+            compressed_image = pickle.load(handle)
+
+        kind = compressed_image['kind']
+        assert kind in [2, 3]
+        compressed_image = compressed_image['image']
+
+        if kind == 3:
             raw_image = color_decoder.apply(compressed_image)
         else:
             raw_image = greyscale_decoder.apply(compressed_image)
