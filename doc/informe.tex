@@ -763,7 +763,35 @@ servir como {\em tradeoff}s compresión/calidad.
 
 \section{Conclusiones}
 
-\TODO{TODO}
+El método de compresión utilizado por JPEG es relativamente sencillo de implementar
+y es versátil:
+\begin{itemize}
+\item Permite obtener consistentemente altas tasas de compresión (de 10:1 o superiores),
+      a costa de sacrificar la calidad de la imagen.
+      Para ello se debe utilizar un factor de cuantización $Q$ alto (p.ej. $Q = 50$).
+\item A la inversa, permite preservar una calidad razonable para las imágenes,
+      a costa de bajar la tasa de compresión,
+      Para ello se debe utilizar un factor de cuantización $Q$ bajo (p.ej. $Q = 2$).
+\item Permite transferir imágenes de manera progresiva.
+\end{itemize}
+De acuerdo con las observaciones realizadas,
+los parámetros tamaño de bloque $B = 8$,
+factor de cuantización $Q = 25$
+y umbral de cuantización $U = 128$
+parecen funcionar razonablemente en varios casos representativos,
+resultando tanto en una tasa de compresión elevada
+como en una calidad de imagen aceptable.
+
+Una desventaja que presenta el método de compresión de JPEG son sus
+característicos artefactos de compresión.
+En particular, los {\em ringing effects}
+dificultan considerablemente obtener alta fidelidad sobre las
+imágenes comprimidas cuando la imagen original presenta ``discontinuidades'',
+es decir, bordes bien delimitados.
+Esto hace que el método sea, en líneas generales,
+apto para comprimir imágenes ``de la realidad'' (tales como fotografías),
+y poco apto para trabajar con imágenes ``artificiales'' como diagramas
+y figuras geométricas.
 
 \newpage
 \appendix
@@ -825,7 +853,7 @@ img9 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img09.png} &&&&
 \section*{Referencias}
 
 \begin{itemize}
-\item[[1]]
+\item[{[1]}]
 Gregory K Wallace.
 The jpeg still picture compression standard.
 {\em IEEE transactions on consumer electronics}, 38(1):xviii--xxxiv, 1992.
