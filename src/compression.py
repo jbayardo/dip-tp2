@@ -1,6 +1,7 @@
 import itertools
+import os
+import pickle
 
-import matplotlib.pyplot as plt
 import numpy as np
 import skimage as ski
 import skimage.io
@@ -211,24 +212,6 @@ class GreyscaleEncoder(Codec):
         return ffp.dct(ffp.dct(chunk.T, norm='ortho').T, norm='ortho')
 
 
-class TableGreyscaleEncoder(GreyscaleEncoder):
-    def __init__(self, quant_table, quant_threshold=None, chunk_size=8):
-        assert quant_table is not None
-        assert quant_threshold is None or quant_threshold > 0
-        super().__init__(chunk_size)
-        self._quant_table = quant_table
-        self._quant_threshold = quant_threshold
-
-    def _quantize(self, chunk):
-        chunk = np.divide(chunk, self._quant_table)
-        chunk = np.round(chunk)
-
-        if self._quant_threshold is not None:
-            np.clip(chunk, -self._quant_threshold, self._quant_threshold, out=chunk)
-
-        return chunk
-
-
 class GreyscaleDecoder(Codec):
     @staticmethod
     def _into_uint_range(image):
@@ -247,6 +230,24 @@ class GreyscaleDecoder(Codec):
 
     def _transform(self, chunk):
         return ffp.idct(ffp.idct(chunk.T, norm='ortho').T, norm='ortho')
+
+
+class TableGreyscaleEncoder(GreyscaleEncoder):
+    def __init__(self, quant_table, quant_threshold=None, chunk_size=8):
+        assert quant_table is not None
+        assert quant_threshold is None or quant_threshold > 0
+        super().__init__(chunk_size)
+        self._quant_table = quant_table
+        self._quant_threshold = quant_threshold
+
+    def _quantize(self, chunk):
+        chunk = np.divide(chunk, self._quant_table)
+        chunk = np.round(chunk)
+
+        if self._quant_threshold is not None:
+            np.clip(chunk, -self._quant_threshold, self._quant_threshold, out=chunk)
+
+        return chunk
 
 
 class TableGreyscaleDecoder(GreyscaleDecoder):
@@ -287,62 +288,6 @@ def zigzag(n):
             y, x = move(y, x)
 
     return mask
-
-
-class DecompressingTableGreyscaleDecoder(TableGreyscaleDecoder):
-    def __init__(self, decompressor, quant_table, chunk_size=8):
-        assert decompressor is not None
-        super().__init__(quant_table, chunk_size)
-        self._zigzag_order = zigzag(chunk_size)
-        self._decompressor = decompressor
-
-    def apply(self, image):
-        decompressed = self._decompress(image)
-        super().apply(decompressed)
-        return self._processed_image
-
-    def _decompress(self, file):
-        width = file['width']
-        height = file['height']
-        image = np.zeros(shape=(width, height), dtype=np.int16)
-
-        assert width % self.chunk_size == 0
-        assert height % self.chunk_size == 0
-
-        height_blocks = height // self.chunk_size
-        width_blocks = width // self.chunk_size
-
-        last_chunk_dc_coefficient = 0
-        for height_block_index in range(height_blocks):
-            for width_block_index in range(width_blocks):
-                index = (height_block_index, width_block_index)
-                height_block_start = height_block_index * self.chunk_size
-                height_block_end = (height_block_index + 1) * self.chunk_size
-                width_block_start = width_block_index * self.chunk_size
-                width_block_end = (width_block_index + 1) * self.chunk_size
-
-                dc_coefficient = file['DC'][index] + last_chunk_dc_coefficient
-                last_chunk_dc_coefficient = dc_coefficient
-
-                compressed_chunk = list(zip(*file['chunks'][index]))
-                lengths_of_runs, codes = compressed_chunk[0], compressed_chunk[1]
-                symbols = self._decompressor.decode_many(codes)
-
-                decompressed_chunk = self._run_length_decode(dc_coefficient, lengths_of_runs, symbols)
-                image[height_block_start:height_block_end, width_block_start:width_block_end] = decompressed_chunk
-
-        return image
-
-    def _run_length_decode(self, dc_coefficient, lengths_of_runs, symbols):
-        chunk = np.zeros(shape=(self.chunk_size, self.chunk_size))
-        chunk[0, 0] = dc_coefficient
-        position = itertools.islice(self._zigzag_order, 1, None)
-        for length, symbol in zip(lengths_of_runs, symbols):
-            while length > 0:
-                i, j = next(position)
-                chunk[i, j] = symbol
-                length -= 1
-        return chunk
 
 
 class CompressingTableGreyscaleEncoder(TableGreyscaleEncoder):
@@ -408,6 +353,62 @@ class CompressingTableGreyscaleEncoder(TableGreyscaleEncoder):
         symbols.append(symbol)
 
         return lengths_of_runs, symbols
+
+
+class DecompressingTableGreyscaleDecoder(TableGreyscaleDecoder):
+    def __init__(self, decompressor, quant_table, chunk_size=8):
+        assert decompressor is not None
+        super().__init__(quant_table, chunk_size)
+        self._zigzag_order = zigzag(chunk_size)
+        self._decompressor = decompressor
+
+    def apply(self, image):
+        decompressed = self._decompress(image)
+        super().apply(decompressed)
+        return self._processed_image
+
+    def _decompress(self, file):
+        width = file['width']
+        height = file['height']
+        image = np.zeros(shape=(width, height), dtype=np.int16)
+
+        assert width % self.chunk_size == 0
+        assert height % self.chunk_size == 0
+
+        height_blocks = height // self.chunk_size
+        width_blocks = width // self.chunk_size
+
+        last_chunk_dc_coefficient = 0
+        for height_block_index in range(height_blocks):
+            for width_block_index in range(width_blocks):
+                index = (height_block_index, width_block_index)
+                height_block_start = height_block_index * self.chunk_size
+                height_block_end = (height_block_index + 1) * self.chunk_size
+                width_block_start = width_block_index * self.chunk_size
+                width_block_end = (width_block_index + 1) * self.chunk_size
+
+                dc_coefficient = file['DC'][index] + last_chunk_dc_coefficient
+                last_chunk_dc_coefficient = dc_coefficient
+
+                compressed_chunk = list(zip(*file['chunks'][index]))
+                lengths_of_runs, codes = compressed_chunk[0], compressed_chunk[1]
+                symbols = self._decompressor.decode_many(codes)
+
+                decompressed_chunk = self._run_length_decode(dc_coefficient, lengths_of_runs, symbols)
+                image[height_block_start:height_block_end, width_block_start:width_block_end] = decompressed_chunk
+
+        return image
+
+    def _run_length_decode(self, dc_coefficient, lengths_of_runs, symbols):
+        chunk = np.zeros(shape=(self.chunk_size, self.chunk_size))
+        chunk[0, 0] = dc_coefficient
+        position = itertools.islice(self._zigzag_order, 1, None)
+        for length, symbol in zip(lengths_of_runs, symbols):
+            while length > 0:
+                i, j = next(position)
+                chunk[i, j] = symbol
+                length -= 1
+        return chunk
 
 
 class YCbCrSubsamplingEncoder(ImageProcessor):
@@ -615,53 +616,8 @@ def psnr(signal, noise):
     return 20 * np.log10(max_I) - 10 * np.log10(mse)
 
 
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Compress and decompress images using JPEG techniques.')
-    # Modes of operation
-    parser.add_argument('-c', '--compress', action='store_true', help='Compress')
-    parser.add_argument('-d', '--decompress', action='store_true', help='Decompress')
-    parser.add_argument('-f', '--full', action='store_true', help='Do both decompression and compression. Does not output')
-    parser.add_argument('-p', '--psnr', action='store_true', help='Compute peak signal to noise ratio after --full')
-    parser.add_argument('-r', '--rate', action='store_true', help='Compute compression rate after --full')
-
-    # Parameters
-    parser.add_argument('-b', '--block-size', default=8, help='Which block size to use for compression', type=int)
-    parser.add_argument('-q', '--quant-coefficient', default=50, help='Quantization factor to use', type=float)
-    parser.add_argument('-u', '--quant-threshold', default=2000, help='Quantization threshold to use', type=float)
-    parser.add_argument('-t', '--table', help='Quantization table preset to use when not using a quantization coefficient', type=str, choices=['default', 'all', 'ac_only'])
-
-    parser.add_argument('input', type=str, nargs=1, help='Input file to compress', required=True)
-    parser.add_argument('output', type=str, nargs=1, help='File to dump output', required=True)
-    args = parser.parse_args()
-
-    if args.psnr:
-        args.full = True
-
-    if args.rate:
-        args.full = True
-
-    if args.full:
-        args.compress = True
-        args.decompress = True
-
-    input_image = ski.io.imread(args.input)
-    compressed_image = input_image
-    if args.compress:
-        compressed_image = None
-
-    decompressed_image = input_image
-    if args.decompress:
-        assert args.output is not None
-        decompressed_image = None
-
-    if args.psnr:
-        print(psnr(input_image, decompressed_image))
-
-    if args.rate:
-        raise NotImplementedError()
-
+def build_quant_table(args):
+    # TODO: write proper
     quant_table = np.array([[17, 18, 24, 47, 99, 128, 192, 256],
                             [18, 21, 26, 66, 99, 192, 256, 512],
                             [24, 26, 56, 99, 128, 256, 512, 512],
@@ -682,33 +638,125 @@ if __name__ == '__main__':
 
     quant_table = 1 * np.ones_like(quant_table)
 
-    # TODO: esto tendria que ser un buen compresor, hay que usar una tabla copada. Esta tabla flashea fuerte.
-    # translator = HuffmanTree.from_weight_dictionary({4: 54})
+    return quant_table
 
-    # grey_encoder = CompressingTableGreyscaleEncoder(translator, quant_table)
-    grey_encoder = TableGreyscaleEncoder(quant_table)
-    grey_encoder = Pipeline(Pad(8), grey_encoder)
-    # grey_decoder = DecompressingTableGreyscaleDecoder(translator, quant_table)
-    grey_decoder = TableGreyscaleDecoder(quant_table)
 
-    rgb_encoder = YCbCrSubsamplingEncoder({
-        'Y': grey_encoder,
-        'Cb': grey_encoder,
-        'Cr': grey_encoder,
-        'A': grey_encoder
-    }, (2, 2))
-    rgb_encoder = Pipeline(Pad(8), rgb_encoder)
+if __name__ == '__main__':
+    import argparse
 
-    rgb_decoder = YCbCrSubsamplingDecoder({
-        'Y': grey_decoder,
-        'Cb': grey_decoder,
-        'Cr': grey_decoder,
-        'A': grey_decoder
+    parser = argparse.ArgumentParser(description='Compress and decompress images using JPEG techniques.')
+
+    # Modes of operation
+    parser.add_argument('-c', '--compress', action='store_true', help='Compress')
+    parser.add_argument('-d', '--decompress', action='store_true', help='Decompress')
+    parser.add_argument('-p', '--psnr', action='store_true', help='Peak signal to noise ratio between original and compressed images')
+    parser.add_argument('-r', '--rate', action='store_true', help='Compression rate between original and compressed images')
+
+    # Parameters
+    parser.add_argument('-b', '--block-size', default=8, help='Which block size to use for compression', type=int)
+    parser.add_argument('-q', '--quant-coefficient', default=50, help='Quantization factor to use', type=float)
+    parser.add_argument('-u', '--quant-threshold', default=2000, help='Quantization threshold to use', type=float)
+    parser.add_argument('-t', '--table', help='Quantization table preset to use when not using a quantization coefficient', type=str, choices=['default', 'all', 'ac_only'])
+
+    parser.add_argument('--huffman', action='store_false', help='Do not use Huffman when compressing')
+    parser.add_argument('--huffman-tree', default='default', help='Huffman tree preset to use when compressing', type=str, choices=['default'])
+
+    parser.add_argument('input', type=str, nargs=1, help='Input file to compress')
+    parser.add_argument('output', type=str, nargs='?', help='File to dump output')
+    args = parser.parse_args()
+
+    args.input = args.input[0]
+    if args.psnr:
+        assert args.output is not None
+        left = ski.io.imread(args.input)
+        right = ski.io.imread(args.output)
+        print(psnr(left, right))
+        exit(0)
+    elif args.rate:
+        original_image = ski.io.imread(args.input)
+        rate = float(original_image.shape[0] * original_image.shape[1]) / os.stat(args.output).st_size
+        print(rate)
+        exit(0)
+    elif not (args.compress or args.decompress):
+        raise NotImplementedError('Unknown operation mode')
+
+    # Prepares the codecs
+    chunk_size = args.block_size
+    quant_threshold = args.quant_threshold
+    quant_table = None
+    if args.table is not None:
+        quant_table = build_quant_table(args)
+    else:
+        quant_table = args.quant_coefficient * np.ones(shape=(chunk_size, chunk_size))
+
+    compressor = None
+    if args.huffman_tree is not None:
+        # TODO: esto tendria que ser un buen compresor, hay que usar una tabla copada. Esta tabla flashea fuerte.
+        compressor = HuffmanTree.from_weight_dictionary({4: 54})
+
+    greyscale_encoder = None
+    greyscale_decoder = None
+    # By default, we are compressing a greyscale image
+    if args.huffman:
+        assert compressor is not None
+        greyscale_encoder = CompressingTableGreyscaleEncoder(compressor, quant_table, quant_threshold, chunk_size)
+        greyscale_decoder = DecompressingTableGreyscaleDecoder(compressor, quant_table, chunk_size)
+    else:
+        greyscale_encoder = TableGreyscaleEncoder(quant_table, quant_threshold, chunk_size)
+        greyscale_decoder = TableGreyscaleDecoder(quant_table, chunk_size)
+
+    # Handles non divisible by chunk_size images coming into the greyscale encoder; to prevent chunking from failing.
+    greyscale_encoder = Pipeline(Pad(chunk_size), greyscale_encoder)
+
+    # We are compressing an image in RGB or RGBA
+    color_encoder = YCbCrSubsamplingEncoder({
+        'Y': greyscale_encoder,
+        'Cb': greyscale_encoder,
+        'Cr': greyscale_encoder,
+        'A': greyscale_encoder}, (2, 2)) # TODO: add sampling as a parameter
+
+    # Handles non divisible by chunk_size images coming into the YCbCr encoder. Prevents chunking from failing. Notice
+    # that we have another Pad down the line in each encoder, that is because after subsampling, the images may not be
+    # divisible by chunk size, so we need to handle that case.
+    color_encoder = Pipeline(Pad(chunk_size), color_encoder)
+
+    color_decoder = YCbCrSubsamplingDecoder({
+        'Y': greyscale_decoder,
+        'Cb': greyscale_decoder,
+        'Cr': greyscale_decoder,
+        'A': greyscale_decoder
     })
 
-    rgb_picture = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp2\\imgs\\input\\imgs_color\\img00.png")
-    encoded = rgb_encoder.apply(rgb_picture)
-    rgb_decoded = rgb_decoder.apply(encoded)
-    ski.io.imshow(rgb_decoded)
-    plt.show()
-    print(psnr(rgb_picture, rgb_decoded))
+    if args.compress:
+        # In this case, we just produced a file in our own format containing relevant information for decoding it
+        raw_image = ski.io.imread(args.input)
+
+        compressed_image = None
+        if len(raw_image.shape) == 2:
+            compressed_image = greyscale_encoder.apply(raw_image)
+        else:
+            assert len(raw_image.shape) == 3
+            assert raw_image.shape[2] in [3, 4]
+            compressed_image = color_encoder.apply(raw_image)
+
+        with open(args.output, 'wb') as handle:
+            pickle.dump({
+                'kind': len(raw_image.shape),
+                'image': compressed_image
+            }, handle)
+    elif args.decompress:
+        compressed_image = None
+        with open(args.input, 'rb') as handle:
+            compressed_image = pickle.load(handle)
+
+        kind = compressed_image['kind']
+        assert kind in [2, 3]
+        compressed_image = compressed_image['image']
+
+        if kind == 3:
+            raw_image = color_decoder.apply(compressed_image)
+        else:
+            raw_image = greyscale_decoder.apply(compressed_image)
+        ski.io.imsave(args.output, raw_image)
+    else:
+        raise NotImplementedError('Unknown operation mode')
