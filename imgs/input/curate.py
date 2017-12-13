@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 
 "Curate images located in the orig_imgs/ directory."
-
+from __future__ import print_function
 import PIL.Image
 import os
 
@@ -9,7 +9,7 @@ os.system('mkdir -p imgs_color/')
 os.system('mkdir -p imgs_gray/')
 
 for x in os.listdir('orig_imgs/'):
-    print x
+    print(x)
     img = PIL.Image.open('orig_imgs/' + x)
     n = min(img.width, img.height)
     if img.width > n:

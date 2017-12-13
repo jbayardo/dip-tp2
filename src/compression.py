@@ -1,9 +1,10 @@
+import itertools
+
 import matplotlib.pyplot as plt
 import numpy as np
-import skimage.measure as skm
 import skimage as ski
 import skimage.io
-import itertools
+import skimage.measure as skm
 from scipy import fftpack as ffp
 
 
@@ -132,6 +133,7 @@ class ImageProcessor(object):
 
 class SquareChunkProcessor(ImageProcessor):
     def __init__(self, chunk_size=8):
+        assert chunk_size > 0
         self.image = None
         self.height = None
         self.width = None
@@ -211,6 +213,8 @@ class GreyscaleEncoder(Codec):
 
 class TableGreyscaleEncoder(GreyscaleEncoder):
     def __init__(self, quant_table, quant_threshold=None, chunk_size=8):
+        assert quant_table is not None
+        assert quant_threshold is None or quant_threshold > 0
         super().__init__(chunk_size)
         self._quant_table = quant_table
         self._quant_threshold = quant_threshold
@@ -220,7 +224,7 @@ class TableGreyscaleEncoder(GreyscaleEncoder):
         chunk = np.round(chunk)
 
         if self._quant_threshold is not None:
-            chunk[chunk <= self._quant_threshold] = 0.0
+            np.clip(chunk, -self._quant_threshold, self._quant_threshold, out=chunk)
 
         return chunk
 
@@ -247,6 +251,7 @@ class GreyscaleDecoder(Codec):
 
 class TableGreyscaleDecoder(GreyscaleDecoder):
     def __init__(self, quant_table, chunk_size=8):
+        assert quant_table is not None
         super().__init__(chunk_size)
         self._quant_table = quant_table
 
@@ -262,6 +267,7 @@ def zigzag(n):
     :param n: size of square matrix to iterate over
     :return: list of indexes in the matrix, sorted by visit order
     """
+    assert n > 0
 
     def move(i, j):
         if j < (n - 1):
@@ -285,6 +291,7 @@ def zigzag(n):
 
 class DecompressingTableGreyscaleDecoder(TableGreyscaleDecoder):
     def __init__(self, decompressor, quant_table, chunk_size=8):
+        assert decompressor is not None
         super().__init__(quant_table, chunk_size)
         self._zigzag_order = zigzag(chunk_size)
         self._decompressor = decompressor
@@ -340,6 +347,7 @@ class DecompressingTableGreyscaleDecoder(TableGreyscaleDecoder):
 
 class CompressingTableGreyscaleEncoder(TableGreyscaleEncoder):
     def __init__(self, compressor, quant_table, quant_threshold=None, chunk_size=8):
+        assert compressor is not None
         super().__init__(quant_table, quant_threshold, chunk_size)
         self._zigzag_order = zigzag(chunk_size)
         self._compressor = compressor
@@ -411,17 +419,10 @@ class YCbCrSubsamplingEncoder(ImageProcessor):
         self._processors = processors
         self._sampling = sampling
 
-    @staticmethod
-    def rgb2ycbcr(im):
-        xform = np.array([[.299, .587, .114], [-.168736, -.331264, .5], [.5, -.418688, -.081312]])
-        ycbcr = im.dot(xform.T)
-        ycbcr[:, :, [1, 2]] += 128
-        return np.uint8(ycbcr)
-
     def chroma_subsample(self, subchannel, subsampling):
         reduced = skm.block_reduce(subchannel,
-                                block_size=(subsampling[0], subsampling[1]),
-                                func=np.median)
+                                   block_size=(subsampling[0], subsampling[1]),
+                                   func=np.median)
         return np.uint8(reduced)
 
     def apply(self, image):
@@ -437,21 +438,18 @@ class YCbCrSubsamplingEncoder(ImageProcessor):
         # Alpha subsampling
         A = None
         if channels == 4:
-            A = self.chroma_subsample(image[:, :, 3],
-                                      self._sampling)
+            A = self.chroma_subsample(image[:, :, 3], self._sampling)
             A = self._processors['A'].apply(A)
 
-        ycbcr = YCbCrSubsamplingEncoder.rgb2ycbcr(image[:, :, :3])
+        ycbcr = rgb2ycbcr(image[:, :, :3])
 
         Y = ycbcr[:, :, 0]
         Y = self._processors['Y'].apply(Y)
 
-        Cb = self.chroma_subsample(ycbcr[:, :, 1],
-                                   self._sampling)
+        Cb = self.chroma_subsample(ycbcr[:, :, 1], self._sampling)
         Cb = self._processors['Cb'].apply(Cb)
 
-        Cr = self.chroma_subsample(ycbcr[:, :, 2],
-                                   self._sampling)
+        Cr = self.chroma_subsample(ycbcr[:, :, 2], self._sampling)
         Cr = self._processors['Cr'].apply(Cr)
 
         return {
@@ -473,19 +471,12 @@ class YCbCrSubsamplingDecoder(ImageProcessor):
 
         self._processors = processors
 
-    @staticmethod
-    def ycbcr2rgb(im):
-        xform = np.array([[1, 0, 1.402], [1, -0.344136, -.714136], [1, 1.772, 0]])
-        rgb = im.astype(np.float)
-        rgb[:, :, [1, 2]] -= 128
-        return np.uint8(rgb.dot(xform.T))
-
     def chroma_oversample(self, subchannel, image):
         sampling = image['sampling']
         oversampled = np.zeros(shape=(image['height'], image['width']))
         for i in range(oversampled.shape[0]):
             for j in range(oversampled.shape[1]):
-                oversampled[i][j] = subchannel[i//sampling[0]][j//sampling[1]]
+                oversampled[i][j] = subchannel[i // sampling[0]][j // sampling[1]]
         return oversampled
 
     def apply(self, image):
@@ -512,7 +503,7 @@ class YCbCrSubsamplingDecoder(ImageProcessor):
         Cr = self.chroma_oversample(Cr, image)
         reconstructed[:, :, 2] = Cr
 
-        reconstructed[:, :, :3] = YCbCrSubsamplingDecoder.ycbcr2rgb(reconstructed[:, :, :3])
+        reconstructed[:, :, :3] = ycbcr2rgb(reconstructed[:, :, :3])
 
         if image['A'] is not None:
             A = self._processors['A'].apply(image['A'])
@@ -521,7 +512,7 @@ class YCbCrSubsamplingDecoder(ImageProcessor):
         else:
             reconstructed = reconstructed[:, :, :3]
 
-        return reconstructed
+        return reconstructed.astype(np.uint8)
 
 
 class Pad(ImageProcessor):
@@ -553,6 +544,7 @@ class Pad(ImageProcessor):
 
 class Pipeline(ImageProcessor):
     def __init__(self, *processors):
+        assert len(processors) > 0
         self._processors = processors
 
     def apply(self, image):
@@ -563,6 +555,7 @@ class Pipeline(ImageProcessor):
 
 class KeepShape(ImageProcessor):
     def __init__(self, inner):
+        assert inner is not None
         self._inner = inner
 
     def apply(self, image):
@@ -583,7 +576,92 @@ class KeepShape(ImageProcessor):
         return image
 
 
+def rgb2ycbcr(rgb):
+    """
+    In accordance with http://www.itu.int/rec/T-REC-T.871-201105-I/en
+    """
+    conversion_matrix = np.array([
+        [.299, .587, .114],
+        [-.168736, -.331264, .5],
+        [.5, -.418688, -.081312]])
+    rgb = rgb.astype(np.double)
+    rgb = rgb.dot(conversion_matrix.T)
+    rgb[:, :, [1, 2]] += 128
+    rgb = np.round(rgb)
+    rgb = np.clip(rgb, 0, 255)
+    return np.uint8(rgb)
+
+
+def ycbcr2rgb(ycbcr):
+    """
+    In accordance with http://www.itu.int/rec/T-REC-T.871-201105-I/en
+    """
+    conversion_matrix = np.array([
+        [1, 0, 1.402],
+        [1, -0.344136, -.714136],
+        [1, 1.772, 0]])
+    ycbcr = ycbcr.astype(np.double)
+    ycbcr[:, :, [1, 2]] -= 128
+    ycbcr = ycbcr.dot(conversion_matrix.T)
+    ycbcr = np.round(ycbcr)
+    ycbcr = np.clip(ycbcr, 0, 255)
+    return np.uint8(ycbcr)
+
+
+def psnr(signal, noise):
+    assert signal.shape == noise.shape
+    max_I = 255
+    mse = np.mean(np.subtract(signal, noise, dtype=np.double) ** 2, axis=None)
+    return 20 * np.log10(max_I) - 10 * np.log10(mse)
+
+
 if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Compress and decompress images using JPEG techniques.')
+    # Modes of operation
+    parser.add_argument('-c', '--compress', action='store_true', help='Compress')
+    parser.add_argument('-d', '--decompress', action='store_true', help='Decompress')
+    parser.add_argument('-f', '--full', action='store_true', help='Do both decompression and compression. Does not output')
+    parser.add_argument('-p', '--psnr', action='store_true', help='Compute peak signal to noise ratio after --full')
+    parser.add_argument('-r', '--rate', action='store_true', help='Compute compression rate after --full')
+
+    # Parameters
+    parser.add_argument('-b', '--block-size', default=8, help='Which block size to use for compression', type=int)
+    parser.add_argument('-q', '--quant-coefficient', default=50, help='Quantization factor to use', type=float)
+    parser.add_argument('-u', '--quant-threshold', default=2000, help='Quantization threshold to use', type=float)
+    parser.add_argument('-t', '--table', help='Quantization table preset to use when not using a quantization coefficient', type=str, choices=['default', 'all', 'ac_only'])
+
+    parser.add_argument('input', type=str, nargs=1, help='Input file to compress', required=True)
+    parser.add_argument('output', type=str, nargs=1, help='File to dump output', required=True)
+    args = parser.parse_args()
+
+    if args.psnr:
+        args.full = True
+
+    if args.rate:
+        args.full = True
+
+    if args.full:
+        args.compress = True
+        args.decompress = True
+
+    input_image = ski.io.imread(args.input)
+    compressed_image = input_image
+    if args.compress:
+        compressed_image = None
+
+    decompressed_image = input_image
+    if args.decompress:
+        assert args.output is not None
+        decompressed_image = None
+
+    if args.psnr:
+        print(psnr(input_image, decompressed_image))
+
+    if args.rate:
+        raise NotImplementedError()
+
     quant_table = np.array([[17, 18, 24, 47, 99, 128, 192, 256],
                             [18, 21, 26, 66, 99, 192, 256, 512],
                             [24, 26, 56, 99, 128, 256, 512, 512],
@@ -593,12 +671,9 @@ if __name__ == '__main__':
                             [192, 256, 512, 1024, 2048, 4096, 8192, 8192],
                             [256, 512, 512, 1024, 2048, 4096, 8192, 8192]])
 
-    s = 7
-    quant_table[0:s, 0:s] = np.ones_like(quant_table[0:s, 0:s])
-
-    quant_table = np.array([[16, 11, 10, 16, 24, 40, 51, 61],
-                            [12, 12, 14, 19, 26, 58, 60, 55],
-                            [14, 13, 16, 24, 40, 57, 69, 56],
+    quant_table = np.array([[1, 1, 1, 16, 24, 40, 51, 61],
+                            [1, 1, 1, 19, 26, 58, 60, 55],
+                            [1, 1, 1, 24, 40, 57, 69, 56],
                             [14, 17, 22, 29, 51, 87, 80, 62],
                             [18, 22, 37, 56, 68, 109, 103, 77],
                             [24, 35, 55, 64, 81, 104, 113, 92],
@@ -608,13 +683,14 @@ if __name__ == '__main__':
     quant_table = 1 * np.ones_like(quant_table)
 
     # TODO: esto tendria que ser un buen compresor, hay que usar una tabla copada. Esta tabla flashea fuerte.
-    translator = HuffmanTree.from_weight_dictionary({4: 54})
+    # translator = HuffmanTree.from_weight_dictionary({4: 54})
 
-    grey_encoder = CompressingTableGreyscaleEncoder(translator, quant_table)
+    # grey_encoder = CompressingTableGreyscaleEncoder(translator, quant_table)
+    grey_encoder = TableGreyscaleEncoder(quant_table)
     grey_encoder = Pipeline(Pad(8), grey_encoder)
-    grey_decoder = DecompressingTableGreyscaleDecoder(translator, quant_table)
+    # grey_decoder = DecompressingTableGreyscaleDecoder(translator, quant_table)
+    grey_decoder = TableGreyscaleDecoder(quant_table)
 
-    colour_picture = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp2\\test.jpg")
     rgb_encoder = YCbCrSubsamplingEncoder({
         'Y': grey_encoder,
         'Cb': grey_encoder,
@@ -622,7 +698,6 @@ if __name__ == '__main__':
         'A': grey_encoder
     }, (2, 2))
     rgb_encoder = Pipeline(Pad(8), rgb_encoder)
-    rgb_encoded = rgb_encoder.apply(colour_picture)
 
     rgb_decoder = YCbCrSubsamplingDecoder({
         'Y': grey_decoder,
@@ -630,11 +705,10 @@ if __name__ == '__main__':
         'Cr': grey_decoder,
         'A': grey_decoder
     })
-    rgb_decoded = rgb_decoder.apply(rgb_encoded)
+
+    rgb_picture = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp2\\imgs\\input\\imgs_color\\img00.png")
+    encoded = rgb_encoder.apply(rgb_picture)
+    rgb_decoded = rgb_decoder.apply(encoded)
     ski.io.imshow(rgb_decoded)
     plt.show()
-    # lena = ski.io.imread("D:\\jbayardo\\Documents\\dip-tp1\\data\\test\\barbara.png")
-    # encoded, compressed = encoder.apply(lena)
-    # decoded = decoder.apply(compressed)
-    # ski.io.imshow(decoded)
-    # plt.show()
+    print(psnr(rgb_picture, rgb_decoded))
