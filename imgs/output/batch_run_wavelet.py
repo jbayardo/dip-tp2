@@ -31,18 +31,3 @@ def batch_run(b, q, u):
 
 batch_run(256, 50, 2000)
 
-#for i in range(2, 10):
-#    b = 2 ** i
-#    print 'Block size = %u' % (b,)
-#    batch_run(b, 50, 2000)
-#
-#for i in range(2, 10):
-#    q = int(2 ** i * 12.5)
-#    print 'Quantization factor = %u' % (q,)
-#    batch_run(8, q, 2000)
-#
-#for i in range(1, 11):
-#    u = int(5 * i)
-#    print 'Quantization threshold = %u' % (u,)
-#    batch_run(8, 50, u)
-

@@ -158,31 +158,31 @@ que es {\em lossy}:
   gris es la codificación Huffman de la lista de coeficientes.
   La implementación respeta el método usual de Huffman.
 \item
- {\bf Compresión con \texttt{zlib}}.
- Aun después de la compresión usando la codificación de Huffman,
- la imagen comprimida resultaba tener mucha redundancia.
- Se ensayaron varias alternativas para eliminar esta redundancia:
- \begin{enumerate}
- \item Aplicar nuevamente Huffman.
- \item Codificar la salida con {\em run-length encoding} para los bytes
-       \texttt{0x00} y \texttt{0xff},
-       que eran los que tenían mayores repeticiones.
- \item Comprimir la salida con el algoritmo de Lempel--Ziv--Welch.
- \end{enumerate}
- Este último método fue con el que consistentemente se obtuvieron
- mejores tasas de compresión.
- Se utilizó el algoritmo de Lempel--Ziv--Welch provisto por la
- biblioteca \texttt{zlib}.
+  {\bf Compresión con \texttt{zlib}}.
+  Aun después de la compresión usando la codificación de Huffman,
+  la imagen comprimida resultaba tener mucha redundancia.
+  Se ensayaron varias alternativas para eliminar esta redundancia:
+  \begin{enumerate}
+  \item Aplicar nuevamente Huffman.
+  \item Codificar la salida con {\em run-length encoding} para los bytes
+        \texttt{0x00} y \texttt{0xff},
+        que eran los que tenían mayores repeticiones.
+  \item Comprimir la salida con el algoritmo de Lempel--Ziv--Welch.
+  \end{enumerate}
+  Este último método fue con el que consistentemente se obtuvieron
+  mejores tasas de compresión.
+  Se utilizó el algoritmo de Lempel--Ziv--Welch provisto por la
+  biblioteca \texttt{zlib}.
 \end{enumerate}
 
 \subsection{Compresión de imágenes en color}
 
-Realizar la compresión de imágenes a color es en sí un proceso relativamente simple comparado con el de imágenes en escala de grises, ya que en su mayor parte consiste en reutilizar el mismo proceso. El rasgo más distintivo de la compresión a color tiene que ver con cómo los humanos percibimos el color: nuestros ojos son mucho más sensibles al brillo que a los colores en sí. Naturalmente, esto implica que un cambio en el brillo de una imágen tiene más chances de ser detectado por nuestros ojos, y por ende perder información sobre el mismo es lo que más queremos evitar en un esquema de compresión de imágenes.
+Realizar la compresión de imágenes a color es en sí un proceso relativamente simple comparado con el de imágenes en escala de grises, ya que en su mayor parte consiste en reutilizar el mismo proceso. El rasgo más distintivo de la compresión a color tiene que ver con cómo los humanos percibimos el color: nuestros ojos son mucho más sensibles al brillo que a los colores en sí. Naturalmente, esto implica que un cambio en el brillo de una imagen tiene más chances de ser detectado por nuestros ojos, y por ende perder información sobre el mismo es lo que más queremos evitar en un esquema de compresión de imágenes.
 
 \begin{enumerate}
 \item
 	{\bf Convertir de RGB a YCbCr}.
-	En este último, al igual que RGB, tenemos tres canales; el primero es precisamente el brillo que tenemos en el pixel, mientras que Cb y Cr denotan el color en el píxel. Es efecto, en el primer paso estamos separando el brillo de la imágen de su color. La conversión en YCbCr se lleva a cabo a través de la siguiente cuenta:
+	En este último, al igual que RGB, tenemos tres canales; el primero es precisamente el brillo que tenemos en el pixel, mientras que Cb y Cr denotan el color en el píxel. Es efecto, en el primer paso estamos separando el brillo de la imagen de su color. La conversión en YCbCr se lleva a cabo a través de la siguiente cuenta:
 
 	\begin{align}
 		Y &=&  0 &+ (0.299  & \cdot R) &+ (0.587  & \cdot G) &+ (0.114  & \cdot B)\\
@@ -191,7 +191,7 @@ Realizar la compresión de imágenes a color es en sí un proceso relativamente 
 	\end{align}
 
 \item
-	{\bf Explotar la falta de detalle} con la que perciben nuestros ojos al color: en lugar de quedarnos con Cb y Cr (que tienen el mismo tamaño de la imágen cada uno), utilizamos lo que se denomina chroma subsampling. La idea es aplicar una transformación local por bloques que reduzca la cantidad de información que tenemos sobre cada píxel. A modo de ejemplo, podríamos tomar bloques de $2x2$ y utilizar la mediana del bloque como representante del mismo; esto nos reduciría a la mitad el tamaño de los canales Cb y Cr, por lo que el tamaño de la imágen se reduciría de $3n$ a $2n$ píxeles.
+	{\bf Explotar la falta de detalle} con la que perciben nuestros ojos al color: en lugar de quedarnos con Cb y Cr (que tienen el mismo tamaño de la imagen cada uno), utilizamos lo que se denomina chroma subsampling. La idea es aplicar una transformación local por bloques que reduzca la cantidad de información que tenemos sobre cada píxel. A modo de ejemplo, podríamos tomar bloques de $2x2$ y utilizar la mediana del bloque como representante del mismo; esto nos reduciría a la mitad el tamaño de los canales Cb y Cr, por lo que el tamaño de la imagen se reduciría de $3n$ a $2n$ píxeles.
 
 	En sí mismo, el paso de chroma subsampling puede ser arbitrariamente complejo: está estudiado que el ojo puede soportar más perdida de color en bloques que son más anchos que altos, y demás. Qué tipo de subsampling es apropiado para la aplicación que se está realizando es altamente dependiente; no es el mismo tipo de sampling que se utiliza para video, que para imágenes fijas en la web. Esto complejiza considerablemente las posibles formas de elegir qué sample tomar para representar a un bloque de píxeles.
 
@@ -618,23 +618,107 @@ y una tasa de compresión no negligible de $2.47 : 1$:
 
 \subsubsection{Elección del umbral de cuantización $U$}
 
-\TODO{TODO}
+Fijados $B = 8$ y $Q = 25$, se estudió la variación del valor del
+umbral de cuantización $U$ en el rango $\set{1,...,50}$.
+Los box plot de la tasa de compresión y el PSNR obtenidos para
+cada valor de $U$ pueden verse a continuación:
+\begin{center}
+  \includegraphics[width=7cm]{../imgs/output/gray_plots/ufinal_rate.png}
+  \includegraphics[width=7cm]{../imgs/output/gray_plots/ufinal_psnr.png}
+\end{center}
+En el rango estudiado,
+si bien las tasas de compresión obtenidas son muy altas,
+no se alcanzan valores de PSNR razonables: la mediana se encuentra
+siempre por debajo de 25.
+
+El hecho de que la calidad resulta difícilmente aceptable
+se puede comprobar
+visualmente, por ejemplo, con la siguiente imagen, comprimida
+con $B = 8, Q = 25, U = 50$:
+\begin{center}
+\includegraphics[width=4cm]{../imgs/input/imgs_gray/img07.png}
+\includegraphics[width=4cm]{../imgs/output/gray_8_25_50/img07.png}
+\end{center}
+Se repitió el experimento para
+umbrales de cuantización $U \in \set{64, 128, 256, 512, 1024, 2048}$.
+\begin{center}
+  \includegraphics[width=7cm]{../imgs/output/gray_plots/ufinal2_rate.png}
+  \includegraphics[width=7cm]{../imgs/output/gray_plots/ufinal2_psnr.png}
+\end{center}
+El comportamiento del método variando el umbral de cuantización
+parece estancarse a partir de los valores que rondan el rango
+$64 \leq U \leq 128$.
+
+Se propone tomar $U = 128$.
+Se puede comprobar visualmente que la imagen anterior,
+ahora comprimida con $B = 8, Q = 25, U = 128$ recupera
+notablemente la calidad:
+
+\begin{center}
+\includegraphics[width=4cm]{../imgs/input/imgs_gray/img07.png}
+\includegraphics[width=4cm]{../imgs/output/gray_8_25_128/img07.png}
+\end{center}
 
 \section{Variantes del método}
 
 \subsection{Transmisión progresiva}
 
-Tal vez la forma maś intuitiva de llegar a tener una transmisión progresiva de una imágen es simplemente dividirla por bloques y enviarlos serialmente a través de la red. El problema con esta técnica es que el tiempo de carga puede ser muy mala en imágenes que tarden en transmitirse: sólo podemos mostrar las partes de la imágen que ya recibimos, y por ende siempre hay una parte que estaría ``en blanco''.
+Tal vez la forma maś intuitiva de llegar a tener una transmisión progresiva de una imágen es simplemente dividirla por bloques y enviarlos serialmente a través de la red. El problema con esta técnica es que el tiempo de carga puede ser excesivo: sólo podemos mostrar las partes de la imagen que ya recibimos, y por ende siempre hay una parte que estaría ``en blanco''.
 
-El estandard de JPEG propone lo que el comité denomina ``progressive mode''. Este consiste en ir transmitiendo los coeficientes de la DCT para todos los bloques, llenando la cantidad de coeficientes por bloque a medida que pasa el tiempo. Por ejemplo, podríamos primero enviar todos los coeficientes DC, luego los primeros AC, y así sucesivamente.
+El standard de JPEG propone lo que el comité denomina ``progressive mode''. Este consiste en ir transmitiendo los coeficientes de la DCT para todos los bloques, llenando la cantidad de coeficientes por bloque a medida que pasa el tiempo. Por ejemplo, podríamos primero enviar todos los coeficientes DC, luego los primeros AC, y así sucesivamente.
 
-Queda claro que al agregar coeficientes la imágen se iría volviendo cada vez más nítida, ya que tendríamos más información para aproximarla. Esto reduce ampliamente el problema de las ``áreas en blanco'' al cargar la imagen: sólo precisaríamos los primeros coeficientes de cada bloque para tener una aproximación razonable mientras que terminamos de cargar la imagen.
+Al agregar coeficientes la imagen se iría volviendo cada vez más nítida, ya que tendríamos más información para aproximarla. Esto reduce ampliamente el problema de las ``áreas en blanco'' al cargar la imagen: sólo precisaríamos los primeros coeficientes de cada bloque para tener una aproximación razonable mientras que terminamos de cargar la imagen.
 
-Hay múltiples formas de decidir exactamente qué enviar; las dos ideas más simples son enviar una cantidad limitada de coeficientes y enviar una aproximación de los coeficientes en lugar de los valores reales. Qué coeficientes enviar puede también realizarse de múltiples formas: el recorrido zig-zag que vimos anteriormente, una submatriz superior, los de mayor valor absoluto, etcétera. El paper referido por el enunciado~[1] recomienda seguir el orden zig-zag e ir agregando bits menos significativos en cada transmisión.
+Hay múltiples formas de decidir exactamente qué enviar; las dos ideas más simples son enviar una cantidad limitada de coeficientes y enviar una aproximación de los coeficientes en lugar de los valores reales. Qué coeficientes enviar puede también realizarse de múltiples formas: recorrido en zig-zag, una submatriz superior, los de mayor valor absoluto, etcétera. El paper referido por el enunciado~[1] recomienda seguir el orden zig-zag e ir agregando bits menos significativos en cada transmisión.
 
 Cabe destacar que esto es ampliamente utilizado en la práctica (basta con utilizar un browser sobre una conexión lenta para darse cuenta), ya que en general el bottleneck de cualquier aplicación que transmite información a través de una red está precisamente en la entrada y salida, más que en el uso de CPU.
 
-No realizamos una implementación de esto por no tener suficiente tiempo para experimentar, pero ambas implementaciones realizadas son fácilmente extensibles para lograr este propósito: basta con agregar un buffer entre el código responsable de quantizar, y el código responsable de hacer entropy coding; este buffer sería leído cuando se desee enviar la imágen, y se correría entropy coding de alguna forma sobre el mismo antes de enviarlo.
+No realizamos una implementación completa de la transmisión progresiva, porque consideramos que la problemática de {\em transferir} imágenes excedía el alcance de este TP. Sin embargo, realizamos el siguiente experimento que ilustra cómo se vería una imagen enviada con el método de transmisión progresiva.
+
+La siguiente imagen fue comprimida con parámetros $B = 8$, $Q = 25$ y $U = 128$.
+Se muestran a continuación las imágenes parciales que resultan de considerar
+únicamente los primeros $n$ coeficientes del bloque, en un recorrido en zig-zag
+como el que se especifica en~[1]. El valor de $n$ puede variar entre $1$ y $64$.
+Se muestra únicamente el resultado hasta $n = 12$---a partir de ese valor la
+variabilidad en las imágenes resulta apenas distinguible visualmente.
+\bigskip
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+n = 1 &
+n = 2 &
+n = 3 &
+n = 4 &
+n = 5 &
+n = 6 \\
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out01.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out02.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out03.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out04.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out05.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out06.png} \\
+\hline
+n = 7 &
+n = 8 &
+n = 9 &
+n = 10 &
+n = 11 &
+n = 12 \\
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out07.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out08.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out09.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out10.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out11.png} &
+\includegraphics[width=2cm]{../imgs/output/test_progressive/out12.png} \\
+\hline
+\end{tabular}
+\end{center}
+
+La alta calidad que se obtiene usando únicamente los primeros $10/64$
+coeficientes sugiere que los coeficientes asociados a altas frecuencias
+podrían ignorarse por completo para obtener una tasa de compresión aun
+mayor.
 
 \subsection{Matriz de factores de cuantización}
 
@@ -673,12 +757,9 @@ resultando similares tanto en la tasa de compresión como en la calidad
 de las imágenes obtenida.
 
 Se ensayó el mismo experimento también con otras matrices $Q$.
-En ningún caso se encontró un comportamiento claramente superador del método
-original.
-
-\subsection{{\em Wavelet transform}}
-
-  \TODO{TODO}
+En ningún caso se encontró un comportamiento claramente superador del
+método original, aunque algunas elecciones de matrices pueden
+servir como {\em tradeoff}s compresión/calidad.
 
 \section{Conclusiones}
 
@@ -744,7 +825,10 @@ img9 & \includegraphics[width=3cm]{../imgs/output/gray_8_50_2000/img09.png} &&&&
 \section*{Referencias}
 
 \begin{itemize}
-\item[[1]] .
+\item[[1]]
+Gregory K Wallace.
+The jpeg still picture compression standard.
+{\em IEEE transactions on consumer electronics}, 38(1):xviii--xxxiv, 1992.
 \end{itemize}
 
 \end{document}

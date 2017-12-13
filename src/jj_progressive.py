@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+from __future__ import print_function
 import os
 import math
 import sys
@@ -19,8 +20,10 @@ sys.setrecursionlimit(100000)
 def img(fn):
     return PIL.Image.open(fn).convert('L')
 
+
 def wrap(x):
     return min(255, max(0, int(x)))
+
 
 def pad_image(img, pwidth, pheight):
     """
@@ -37,14 +40,17 @@ def pad_image(img, pwidth, pheight):
     img_padded.paste(img)
     return img_padded
 
+
 def inverse_pad_image(img_size, img_padded):
     "Crop a padded image to recover the original image."
     return img_padded.crop([0, 0, img_size[0], img_size[0]])
+
 
 def image_to_matrix(img):
     "Return a numpy matrix such that matrix[i][j] == img.getpixel((i,j))"
     matrix = numpy.fromstring(img.tobytes(), dtype=numpy.uint8)
     return matrix.reshape((img.height, img.width)).T
+
 
 def inverse_image_to_matrix(matrix):
     "Return an image such that matrix[i][j] == img.getpixel((i,j))"
@@ -56,16 +62,19 @@ def inverse_image_to_matrix(matrix):
     img.frombytes(matrix.tostring())
     return img
 
+
 def split_blocks(img, n):
     """
     Split an image in tiles of size n * m, returning a matrix of blocks.
     The width (resp. height) of the image is supposed to be a multiple of
     n (resp. m).
     """
+
     def get_block(img, i, j, n):
         img2 = PIL.Image.new('L', (n, n))
         img2.paste(img.crop([i, j, i + n, j + n]))
         return img2
+
     block_matrix = []
     for i in range(img.width / n):
         block_row = []
@@ -73,6 +82,7 @@ def split_blocks(img, n):
             block_row.append(get_block(img, n * i, n * j, n))
         block_matrix.append(block_row)
     return block_matrix
+
 
 def inverse_split_blocks(block_matrix):
     """
@@ -87,108 +97,44 @@ def inverse_split_blocks(block_matrix):
             img.paste(block, (block.width * i, block.height * j))
     return img
 
-def matr(n):
-    m = []
-    for i in range(n):
-        row = []
-        for j in range(n):
-            row.append(0.0)
-        m.append(numpy.array(row))
-    return numpy.array(m)
 
-def wavelet(matrix):
-    "Perform the 2-dimensional discrete wavelet transform."
-    n = len(matrix)
+def dct2(matrix):
+    "Perform the 2-dimensional discrete cosine transform."
+    return scipy.fftpack.dct(
+        scipy.fftpack.dct(matrix.T, norm='ortho').T,
+        norm='ortho'
+    )
 
-    # n should be a power of 2
-    p = 0
-    while 2 ** p < n:
-        p += 1
-    assert 2 ** p == n
 
-    while n > 1:
-        new_matrix = matr(n)
-        for i in range(n):
-            for j in range(n // 2):
-                a = float(matrix[i][2 * j])
-                b = float(matrix[i][2 * j + 1])
-                m = (a + b) / 2
-                new_matrix[i][j] = m
-                new_matrix[i][n // 2 + j] = b - m
-        for i in range(n):
-            for j in range(n):
-                matrix[i][j] = new_matrix[i][j]
-        new_matrix = matr(n)
-        for i in range(n // 2):
-            for j in range(n):
-                a = float(matrix[2 * i][j])
-                b = float(matrix[2 * i + 1][j])
-                m = (a + b) / 2
-                new_matrix[i][j] = m
-                new_matrix[n // 2 + i][j] = b - m
-        for i in range(n):
-            for j in range(n):
-                matrix[i][j] = new_matrix[i][j]
-        n = n // 2
-    return matrix
+def inverse_dct2(matrix):
+    "Perform the inverse 2-dimensional discrete cosine transform."
+    return scipy.fftpack.idct(
+        scipy.fftpack.idct(matrix.T, norm='ortho').T,
+        norm='ortho'
+    )
 
-def inverse_wavelet(matrix):
-    "Perform the inverse 2-dimensional discrete wavelet transform."
-    n = len(matrix)
 
-    # n should be a power of 2
-    p = 0
-    while 2 ** p < n:
-        p += 1
-    assert 2 ** p == n
-
-    N = n
-    n = 2
-    while n <= N:
-        new_matrix = matr(n)
-        for i in range(n // 2):
-            for j in range(n):
-                m = int(matrix[i][j])
-                d = int(matrix[n // 2 + i][j])
-                new_matrix[2 * i][j] = m - d
-                new_matrix[2 * i + 1][j] = m + d
-        for i in range(n):
-            for j in range(n):
-                matrix[i][j] = new_matrix[i][j]
-        new_matrix = matr(n)
-        for i in range(n):
-            for j in range(n // 2):
-                m = int(matrix[i][j])
-                d = int(matrix[i][n // 2 + j])
-                new_matrix[i][2 * j] = m - d
-                new_matrix[i][2 * j + 1] = m + d
-        for i in range(n):
-            for j in range(n):
-                matrix[i][j] = new_matrix[i][j]
-        n = n * 2
-    return matrix
-
-def blocks_wavelet(block_matrix):
-    "Perform the DWT on each block of the matrix."
+def blocks_dct2(block_matrix):
+    "Perform the DCT on each block of the matrix."
     dct_matrix = []
     for block_row in block_matrix:
         dct_row = []
         for block in block_row:
-            dct_row.append(wavelet(image_to_matrix(block)))
+            dct_row.append(dct2(image_to_matrix(block)))
         dct_matrix.append(numpy.array(dct_row))
     return numpy.array(dct_matrix)
 
-def inverse_blocks_wavelet(dct_matrix):
-    "Perform the inverse DWT on each block of the matrix."
+
+def inverse_blocks_dct2(dct_matrix):
+    "Perform the inverse DCT on each block of the matrix."
     block_matrix = []
     for dct_row in dct_matrix:
         block_row = []
         for dct_elem in dct_row:
-            block_row.append(inverse_image_to_matrix(
-                inverse_wavelet(dct_elem))
-            )
+            block_row.append(inverse_image_to_matrix(inverse_dct2(dct_elem)))
         block_matrix.append(block_row)
     return block_matrix
+
 
 def map_blocks(f, matrix):
     "Apply a function on each element of the matrix."
@@ -204,13 +150,6 @@ def map_blocks(f, matrix):
         result_matrix = numpy.array(result_matrix)
     return result_matrix
 
-quant_table = [
-    [
-        (math.sqrt(float(513 - i) * float(513 - j)) / 513.0) * 10.0
-        for j in range(1, 513)
-    ]
-    for i in range(1, 513)
-]
 
 def quantize_blocks(quantization_factor, quantization_threshold, dct_matrix):
     """
@@ -218,16 +157,13 @@ def quantize_blocks(quantization_factor, quantization_threshold, dct_matrix):
     and.
     This is the only lossy component in the compression pipeline.
     """
+
     def quantize_block(block):
-        qblock = [] 
-        i = -1
+        qblock = []
         for row in block:
-            i += 1
             qrow = []
-            j = -1
             for elem in row:
-                j += 1
-                qelem = int(elem / quant_table[i][j])
+                qelem = int(elem / quantization_factor)
                 if qelem > quantization_threshold:
                     qelem = quantization_threshold
                 elif qelem < -quantization_threshold:
@@ -235,23 +171,23 @@ def quantize_blocks(quantization_factor, quantization_threshold, dct_matrix):
                 qrow.append(qelem)
             qblock.append(qrow)
         return qblock
+
     return map_blocks(quantize_block, dct_matrix)
+
 
 def inverse_quantize_blocks(quantization_factor, dct_matrix_quantized):
     "Apply inverse quantization on each block of the matrix."
+
     def inverse_quantize_block(qblock):
-        block = [] 
-        i = -1
+        block = []
         for qrow in qblock:
-            i += 1
             row = []
-            j = -1
             for qelem in qrow:
-                j += 1
-                elem = qelem * quant_table[i][j]
+                elem = qelem * quantization_factor
                 row.append(elem)
             block.append(row)
         return block
+
     return map_blocks(inverse_quantize_block, dct_matrix_quantized)
 
 def zigzag_indices(n, m):
@@ -259,7 +195,7 @@ def zigzag_indices(n, m):
     Return a permutation of the list of all indices (i, j) with
     0 <= i < n and 0 <= j < n, according to the diagonal walk.
     """
-    i, j = 0, 0 
+    i, j = 0, 0
     yield i, j
     while (i, j) != (n - 1, m - 1):
         if j < m - 1:
@@ -281,8 +217,10 @@ def zigzag_indices(n, m):
             j += 1
             yield i, j
 
+
 def dc_coding(dct_matrix_quantized):
     "Encode the matrix of blocks using DC coding representation."
+
     def dc_coding_block(previous_dc, block):
         width = len(block)
         height = len(block[0])
@@ -293,19 +231,21 @@ def dc_coding(dct_matrix_quantized):
                 value -= previous_dc
             block_dc.append(value)
         return block_dc
+
     dct_matrix_dc = []
     previous_dc = 0
     for ii in range(len(dct_matrix_quantized)):
         for jj in range(len(dct_matrix_quantized)):
             dct_matrix_dc.extend(
-              dc_coding_block(previous_dc, dct_matrix_quantized[ii][jj])
+                dc_coding_block(previous_dc, dct_matrix_quantized[ii][jj])
             )
             previous_dc = dct_matrix_quantized[ii][jj][0][0]
     return dct_matrix_dc
 
+
 def inverse_dc_coding(img_size, block_size, dct_matrix_dc):
     "Decode a matrix from the DC coding representation."
-    img_width, img_height = img_size 
+    img_width, img_height = img_size
 
     def next_inverse_dc_coding_block(previous_dc, curr_index):
         n = 0
@@ -325,12 +265,13 @@ def inverse_dc_coding(img_size, block_size, dct_matrix_dc):
         row = []
         for jj in range(img_height // block_size):
             block, curr_index = next_inverse_dc_coding_block(
-                                  previous_dc, curr_index
-                                )
+                previous_dc, curr_index
+            )
             row.append(block)
             previous_dc = block[0][0]
         dct_matrix_quantized.append(row)
     return dct_matrix_quantized
+
 
 def huffman(dct_matrix_dc):
     "Compress a list of numbers using Huffman coding."
@@ -357,6 +298,7 @@ def huffman(dct_matrix_dc):
         else:
             table[tree] = prefix
             return table
+
     huff_table = build_huffman_table(huff_tree, {}, [])
 
     # Build bitarray
@@ -366,10 +308,11 @@ def huffman(dct_matrix_dc):
 
     return huff_tree, huff_bits
 
+
 def inverse_huffman(huff_tree, huff_bits):
     "Decompress a Huffman-encoded list of numbers."
     dct_matrix_dc = []
-    p = huff_tree 
+    p = huff_tree
     for bit in huff_bits:
         p = p[1] if bit else p[0]
         if not isinstance(p, list):
@@ -377,12 +320,14 @@ def inverse_huffman(huff_tree, huff_bits):
             p = huff_tree
     return dct_matrix_dc
 
+
 def write_huff_tree(tree):
     if isinstance(tree, list):
         return ':' + write_huff_tree(tree[0]) \
-                   + write_huff_tree(tree[1])
+               + write_huff_tree(tree[1])
     else:
         return '.' + struct.pack('i', tree)
+
 
 def pack_data(img_size, img_padded_size, block_size, quantization_factor,
               huff_tree, huff_bits):
@@ -399,6 +344,7 @@ def pack_data(img_size, img_padded_size, block_size, quantization_factor,
     compressed_image.append(huff_bits.tobytes())
     return ''.join(compressed_image)
 
+
 def parse_huff_tree(string, i):
     if string[i] == ':':
         i += 1
@@ -407,29 +353,30 @@ def parse_huff_tree(string, i):
         return i, [left, right]
     elif string[i] == '.':
         i += 1
-        value = struct.unpack('i', string[i : i + 4])[0]
+        value = struct.unpack('i', string[i: i + 4])[0]
         i += 4
         return i, value
     else:
         raise Exception()
 
+
 def inverse_pack_data(compressed_image):
     "Unpack all the data representing the compressed image from a string."
     i = 0
     (
-      img_width,
-      img_height,
-      img_padded_width,
-      img_padded_height,
-      block_size,
-      quantization_factor,
-    ) = struct.unpack('iiiiii', compressed_image[i : i + 24])
+        img_width,
+        img_height,
+        img_padded_width,
+        img_padded_height,
+        block_size,
+        quantization_factor,
+    ) = struct.unpack('iiiiii', compressed_image[i: i + 24])
     i += 24
     i, huff_tree = parse_huff_tree(compressed_image, i)
-    (nbits,) = struct.unpack('i', compressed_image[i : i + 4])
+    (nbits,) = struct.unpack('i', compressed_image[i: i + 4])
     i += 4
     huff_bits = bitarray.bitarray()
-    huff_bits.frombytes(compressed_image[i : ])
+    huff_bits.frombytes(compressed_image[i:])
     huff_bits = huff_bits[: nbits]
     return (
         (img_width, img_height),
@@ -440,75 +387,92 @@ def inverse_pack_data(compressed_image):
         huff_bits
     )
 
+
 def compress_bytes(string):
     return zlib.compress(string, 9)
+
 
 def inverse_compress_bytes(string):
     return zlib.decompress(string)
 
+
 def run(string):
     i = 0
-    (nbits,) = struct.unpack('i', string[i : i + 4])
+    (nbits,) = struct.unpack('i', string[i: i + 4])
     i, huff_tree = parse_huff_tree(string, i)
     huff_bits = bitarray.bitarray()
-    huff_bits.frombytes(string[i : ])
+    huff_bits.frombytes(string[i:])
     huff_bits = huff_bits[: nbits]
     lst = inverse_huffman(huff_tree, huff_bits)
     return ''.join([chr(b) for b in lst])
+
 
 def simple_jpeg_compression(img,
                             block_size=8,
                             quantization_factor=10,
                             quantization_threshold=1000,
-                           ):
+                            ):
     "Compress an image using the given parameters."
     img_padded = pad_image(img, block_size, block_size)
     block_matrix = split_blocks(img_padded, block_size)
-    dct_matrix = blocks_wavelet(block_matrix)
+    dct_matrix = blocks_dct2(block_matrix)
     dct_matrix_quantized = quantize_blocks(
-                             quantization_factor,
-                             quantization_threshold,
-                             dct_matrix
-                           )
+        quantization_factor,
+        quantization_threshold,
+        dct_matrix
+    )
     dct_matrix_dc = dc_coding(dct_matrix_quantized)
     huff_tree, huff_bits = huffman(dct_matrix_dc)
     compressed_image = pack_data(
-                         img.size,
-                         img_padded.size,
-                         block_size,
-                         quantization_factor,
-                         huff_tree,
-                         huff_bits
-                       )
+        img.size,
+        img_padded.size,
+        block_size,
+        quantization_factor,
+        huff_tree,
+        huff_bits
+    )
     compressed_image_z = compress_bytes(compressed_image)
     return compressed_image_z
 
-def simple_jpeg_decompression(data):
+def simple_jpeg_decompression(data, relative_progress=None):
     "Decompress an image."
     compressed_image_z = data
     compressed_image = inverse_compress_bytes(compressed_image_z)
     (
-      img_size,
-      img_padded_size,
-      block_size,
-      quantization_factor,
-      huff_tree,
-      huff_bits
+        img_size,
+        img_padded_size,
+        block_size,
+        quantization_factor,
+        huff_tree,
+        huff_bits
     ) = inverse_pack_data(compressed_image)
+    if relative_progress is None:
+        relative_progress = block_size
     dct_matrix_dc = inverse_huffman(huff_tree, huff_bits)
     dct_matrix_quantized = inverse_dc_coding(
-                             img_padded_size,
-                             block_size,
-                             dct_matrix_dc
-                           )
+        img_padded_size,
+        block_size,
+        dct_matrix_dc
+    )
     dct_matrix = inverse_quantize_blocks(
-                   quantization_factor,
-                   dct_matrix_quantized
-                 )
-    block_matrix = inverse_blocks_wavelet(dct_matrix)
+        quantization_factor,
+        dct_matrix_quantized
+    )
+    dct_matrix = nullify_unseen(dct_matrix, relative_progress) #
+    block_matrix = inverse_blocks_dct2(dct_matrix)
     img_padded = inverse_split_blocks(block_matrix)
     img = inverse_pad_image(img_size, img_padded)
     return img
+
+def nullify_unseen(dct_matrix, relative_progress):
+    def nullify_block(block):
+        zz = zigzag_indices(len(block), len(block))
+        for k in range(relative_progress):
+            zz.next()
+        for i, j in zz:
+            block[i, j] = 0
+        return block
+    return map_blocks(nullify_block, dct_matrix)
 
 def psnr(img1, img2):
     """
@@ -525,19 +489,22 @@ def psnr(img1, img2):
         return 0
     return 20 * math.log(255, 10) - 10 * math.log(mse, 10)
 
+
 def usage():
     msg = [
-      'Usage:\n',
-      '  {prog} -c in.png out.j          Compress.',
-      '  {prog} -d in.j out.png          Decompress.',
-      '  {prog} --psnr orig.png new.png  Calculate PSNR.',
-      '  {prog} --rate orig.png compr.j  Calculate compression rate.',
-      'Options for compression:',
-      '  -b block_size[=8]',
-      '  -q quantization_factor[=50]',
-      '  -u quantization_threshold[=2000]',
+        'Usage:\n',
+        '  {prog} -c in.png out.j          Compress.',
+        '  {prog} -d in.j out.png          Decompress.',
+        '  {prog} --psnr orig.png new.png  Calculate PSNR.',
+        '  {prog} --rate orig.png compr.j  Calculate compression rate.',
+        'Options for compression:',
+        '  -b block_size[=8]',
+        '  -q quantization_factor[=50]',
+        '  -u quantization_threshold[=2000]',
+        '  -p relative_progress[=block_size]',
     ]
     sys.stderr.write('\n'.join(msg).format(prog=sys.argv[0]) + '\n')
+
 
 def compression_rate(orig, compr):
     im = img(orig)
@@ -552,6 +519,7 @@ def main():
         'block_size': 8,
         'quantization_factor': 50,
         'quantization_threshold': 2000,
+        'relative_progress': None,
     }
     while len(argv) > 0:
         opt = argv.pop(0)
@@ -564,6 +532,9 @@ def main():
         elif opt == '-u':
             if len(argv) == 0: usage()
             options['quantization_threshold'] = int(argv.pop(0))
+        elif opt == '-p':
+            if len(argv) == 0: usage()
+            options['relative_progress'] = int(argv.pop(0))
         else:
             args.append(opt)
 
@@ -572,23 +543,26 @@ def main():
         with open(outfile, 'w') as f:
             f.write(
                 simple_jpeg_compression(
-                  img(infile),
-                  block_size=options['block_size'],
-                  quantization_factor=options['quantization_factor'],
-                  quantization_threshold=options['quantization_threshold'],
+                    img(infile),
+                    block_size=options['block_size'],
+                    quantization_factor=options['quantization_factor'],
+                    quantization_threshold=options['quantization_threshold'],
                 )
             )
     elif len(args) == 3 and args[0] == '-d':
         infile, outfile = args[1:]
         with open(infile, 'r') as f:
-            simple_jpeg_decompression(f.read()).save(outfile)
+            simple_jpeg_decompression(
+                f.read(),
+                relative_progress=options['relative_progress']
+            ).save(outfile)
     elif len(args) == 3 and args[0] == '--psnr':
-        print psnr(img(args[1]),img( args[2]))
+        print(psnr(img(args[1]), img(args[2])))
     elif len(args) == 3 and args[0] == '--rate':
-        print compression_rate(args[1], args[2])
+        print(compression_rate(args[1], args[2]))
     else:
         usage()
 
+
 if __name__ == '__main__':
     main()
-

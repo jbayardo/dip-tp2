@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-from __future__ import print_function
+#from __future__ import print_function
 import os
 import subprocess as sp
 
@@ -58,4 +58,13 @@ def batch_run(block_size, quant_coef, quant_threshold):
 #for q in range(13, 26):
 #    print 'Quantization factor = %u' % (q,)
 #    batch_run(8, q, 1000000)
+
+#for i in range(3, 11):
+#    u = 5 * i
+#    print 'Quantization threshold = %u' % (u,)
+#    batch_run(8, 25, u)
+
+for u in [64, 128, 256, 512, 1024, 2048]:
+    print 'Quantization threshold = %u' % (u,)
+    batch_run(8, 25, u)
 
