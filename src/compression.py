@@ -658,7 +658,7 @@ if __name__ == '__main__':
     parser.add_argument('-u', '--quant-threshold', default=2000, help='Quantization threshold to use', type=float)
     parser.add_argument('-t', '--table', help='Quantization table preset to use when not using a quantization coefficient', type=str, choices=['default', 'all', 'ac_only'])
 
-    parser.add_argument('--huffman', action='store_false', help='Do not use Huffman when compressing')
+    parser.add_argument('--huffman', action='store_true', help='Compress using Huffman')
     parser.add_argument('--huffman-tree', default='default', help='Huffman tree preset to use when compressing', type=str, choices=['default'])
 
     parser.add_argument('input', type=str, nargs=1, help='Input file to compress')

@@ -3,7 +3,7 @@ import random
 import PIL.Image
 import subprocess as sp
 
-jj_path = '../../../src/jj.py'
+jj_path = 'D:\\jbayardo\\Documents\\dip-tp2\\src\\compression.py'
 
 for k in range(1, 128):
     print(k)
@@ -18,14 +18,14 @@ for k in range(1, 128):
 
     sp.check_call([
         'python',
-        jj_path, '-c',
+        jj_path, '--huffman', '-c',
         'img%.3u.png' % (k,),
         'out_img%.3u.j' % (k,),
     ])
 
     sp.check_call([
         'python',
-        jj_path, '-d',
+        jj_path, '--huffman', '-d',
         'out_img%.3u.j' % (k,),
         'out_img%.3u.png' % (k,),
     ])

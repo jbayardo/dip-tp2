@@ -3,21 +3,22 @@
 import os
 import subprocess as sp
 
-jj_path = '../../src/jj.py'
-input_dir = '../input/imgs_gray/'
+jj_path = 'D:\\jbayardo\\Documents\\dip-tp2\\src\\compression.py'
+input_dir = 'D:\\jbayardo\\Documents\\dip-tp2\\imgs\\input\\imgs_color'
 
 
 def batch_run(block_size, quant_coef, quant_threshold):
-    output_dir = 'gray_{b}_{q}_{u}'.format(b=block_size, q=quant_coef, u=quant_threshold)
+    output_dir = 'color_{b}_{q}_{u}'.format(b=block_size, q=quant_coef, u=quant_threshold)
 
     try:
         os.mkdir(output_dir)
     except:
         pass
 
-    for image in sorted(os.listdir('../input/imgs_gray/')):
+    for image in sorted(os.listdir(input_dir)):
         print('Compressing %s' % (image,))
         sp.check_call([
+            'python',
             jj_path,
             '-b', str(block_size),
             '-q', str(quant_coef),
@@ -29,7 +30,10 @@ def batch_run(block_size, quant_coef, quant_threshold):
 
         print('Decompressing %s' % (image,))
         sp.check_call([
+            'python',
             jj_path,
+            '-b', str(block_size),
+            '-q', str(quant_coef),
             '-d',
             os.path.join(output_dir, image.replace('.png', '.j')),
             os.path.join(output_dir, image)
@@ -64,7 +68,10 @@ def batch_run(block_size, quant_coef, quant_threshold):
 #    print 'Quantization threshold = %u' % (u,)
 #    batch_run(8, 25, u)
 
-for u in [64, 128, 256, 512, 1024, 2048]:
-    print 'Quantization threshold = %u' % (u,)
-    batch_run(8, 25, u)
+
+for b in [8]:
+    for q in [10, 20]: # [1, 2, 3, 10, 20]
+        for u in [512, 1024, 2048]:
+            print('Quantization threshold = %u' % (u,))
+            batch_run(b, q, u)
 
