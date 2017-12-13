@@ -229,11 +229,12 @@ $200 \times 200$.
 La primera imagen es un cuadrado con una mitad blanca y una
 mitad negra.
 La segunda imagen es un círculo blanco sobre fondo negro.
-En ambas imágenes comprimida puede apreciarse el {\em ringing effect}
+En ambas imágenes comprimidas puede apreciarse el {\em ringing effect}
 visualmente:
 los bordes claramente delimitados entre la región blanca y la
 región negra pasan a estar contaminados por un halo de
-franjas de distintos tonos de gris.
+franjas blancas y negras (y de tonos de gris no apreciables
+a simple vista).
 La situación es particularmente severa en el caso del círculo.
 
 Para completar el experimento, se comprimió la primera imagen
@@ -243,8 +244,8 @@ ya que la transición entre la mitad blanca y la mitad negra ocurre
 justo en el límite entre dos bloques.
 Esto efectivamente puede apreciarse en la figura de abajo.
 
-{\em Nota:} los recuadros negro que rodean a las imágenes no forman
-parte de la imagen.\\
+{\em Nota:} los recuadros negros que rodean a las imágenes no forman
+parte de las imágenes.\\
 \begin{center}
 \begin{tabular}{|c|c|c|}
 \hline
@@ -322,7 +323,7 @@ perjudicando considerablemente la calidad visual de la imagen.
 
 Para ilustrar este fenómeno se comprimió una imagen de $200 \times 200$
 con un degradé de blanco a negro, con $B = 8$ y con $B = 32$.
-En las imágenes comprimidas puede apreciarse visualmente la
+En las imágenes comprimidas se evidencia visualmente la
 presencia de bloques de tamaño $B \times B$.
 
 \begin{center}
@@ -370,14 +371,14 @@ Comprimida ($B = 32$)
 {\bf Blocking effect con el coeficiente DC no afectado por la etapa de cuantización}
 \end{center}
 
-Puede apreciarse que la cuantización del coeficiente DC tiene un efecto
+Es posible ver que la cuantización del coeficiente DC tiene un efecto
 notable sobre el aspecto visual de los bloques: en particular, si el
 coeficiente DC se cuantiza, el valor de gris promedio de cada bloque
 no coincide con el valor de gris promedio original, sino que presenta
 irregularidades.
 Sin embargo, la cuantización del coeficiente DC claramente {\bf no} es el
 único factor que desencadena el {\em blocking effect}, ya que los
-límites entre bloques también son apreciables en las imágenes que
+límites entre bloques también son visibles en las imágenes que
 se obtienen sin hacer dicha cuantización.
 
 \subsection{Validación del comportamiento del {\em peak signal-to-noise ratio}}
@@ -439,12 +440,11 @@ y el tamaño de bloque variando con valores
 $B \in \set{1,2,4,8,16,32,64,128,256,512}$.
 
 Para cada valor de $B$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión obtenida:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/b_rate.png}
-
-Para cada valor de $B$, en el siguiente gráfico se muestra un
-box plot del {\em peak signal-to-noise ratio} obtenido:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/b_psnr.png}
+box plot de la tasa de compresión y el PSNR obtenidos:\\
+\begin{center}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/b_rate.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/b_psnr.png}
+\end{center}
 
 Puede apreciarse que hay menor varianza en la tasa de compresión
 obtenida a medida que se agranda el tamaño de bloque,
@@ -479,12 +479,11 @@ y el factor de cuantización variando con valores
 $Q \in \set{12,25,50,100,200,400,800}$.
 
 Para cada valor de $Q$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión obtenida:\\
+box plot de la tasa de compresión y el PSNR obtenidos:\\
+\begin{center}
 \includegraphics[width=10cm]{../imgs/output/gray_plots/q_rate.png}
-
-Para cada valor de $Q$, en el siguiente gráfico se muestra un
-box plot del {\em peak signal-to-noise ratio} obtenido:\\
 \includegraphics[width=10cm]{../imgs/output/gray_plots/q_psnr.png}
+\end{center}
 
 Como es de esperarse, la tasa de compresión aumenta a medida que
 se aumenta el factor de cuantización, ya que, a mayor valor de $Q$,
@@ -510,12 +509,27 @@ y el umbral de cuantización variando con valores
 $U \in \set{31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000}$.
 
 Para cada valor de $U$, en el siguiente gráfico se muestra un
-box plot de la tasa de compresión obtenida:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/u_rate.png}
+box plot de la tasa de compresión y el PSNR obtenidos:\\
+\begin{center}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/u_rate.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/u_psnr.png}
+\end{center}
 
-Para cada valor de $U$, en el siguiente gráfico se muestra un
-box plot del {\em peak signal-to-noise ratio} obtenido:\\
-\includegraphics[width=10cm]{../imgs/output/gray_plots/u_psnr.png}
+No se encuentran diferencias significativas para valores de $U$
+superiores a 31 en el rango de valores elegido.
+Esto sugiere que el rango en el que se hizo variar el valor del
+parámetro $U$
+está mal elegido.
+Se repitió el análisis para el rango de valores
+$U \in \set{5, 10, 15, 20, 25, 30, 35, 40, 45, 50}$.
+\begin{center}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/ualt_rate.png}
+\includegraphics[width=7cm]{../imgs/output/gray_plots/ualt_psnr.png}
+\end{center}
+En este rango sí es posible apreciar, como es de esperarse, que
+a medida que aumenta el valor de $U$,
+la tasa de compresión disminuye e, inversamente, la calidad de
+la imagen aumenta.
 
 \subsection{Elección de parámetros}
 
@@ -561,7 +575,8 @@ y por lo tanto no hay un único valor universal correcto para $Q$,
 sino que se trata de un {\em tradeoff}, sumamente dependiente del
 contexto de aplicación.
 
-El valor del factor de cuantización $Q = 25$ parece sumamente razonable,
+Por otro lado, el valor del factor de cuantización $Q = 25$
+parece razonable,
 ya que alcanza tasas de compresión de un orden de magnitud
 (entre 10 y 20 aproximadamente), manteniendo el PSNR sobre 30
 de manera consistente.
