@@ -462,10 +462,10 @@ Puede apreciarse que hay menor varianza en la tasa de compresión
 obtenida a medida que se agranda el tamaño de bloque,
 mientras que hay mayor varianza en la calidad de la imagen obtenida.
 
-El tamaño de bloque $B = 8$ parece ser ideal, ya que en ese valor
-se alcanzan simultáneamente la mejor tasa de compresión en promedio,
-y el mejor valor de PSNR en promedio, con varianzas relativamente
-bajas.
+Los tamaños de bloque $B = 16$ y $B = 32$ parecen ser los ideales,
+ya que en dichos valores se alcanza una tasa de compresión cercana a la mejor en promedio,
+y se alcanza también un valor de PSNR cercano al mejor en promedio,
+con varianzas relativamente baja.
 
 \subsubsection{Variación del factor de cuantización}
 
@@ -510,7 +510,7 @@ box plot de la tasa de compresión y el
 
 No se encuentran diferencias significativas para valores de $U$
 superiores a 31 en el rango de valores elegido.
-Esto sugiere que el rango en el que se eligieron los valores de $U$
+Esto sugiere que el rango en el que se hizo variar el valor del parámetro $U$
 está mal elegido.
 Se repitió el análisis para el rango de valores
 $U \in \set{5, 10, 15, 20, 25, 30, 35, 40, 45, 50}$.
@@ -518,7 +518,7 @@ $U \in \set{5, 10, 15, 20, 25, 30, 35, 40, 45, 50}$.
 \includegraphics[width=7cm]{../imgs/output/gray_plots/ualt_rate.png}
 \includegraphics[width=7cm]{../imgs/output/gray_plots/ualt_psnr.png}
 \end{center}
-Con este cambio puede apreciarse, como es de esperarse, que
+En este rango sí es posible apreciar, como es de esperarse, que
 a medida que aumenta el valor de $U$,
 la tasa de compresión disminuye e, inversamente, la calidad de
 la imagen aumenta.
