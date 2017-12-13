@@ -7,8 +7,8 @@ jj_path = 'D:\\jbayardo\\Documents\\dip-tp2\\src\\compression.py'
 input_dir = 'D:\\jbayardo\\Documents\\dip-tp2\\imgs\\input\\imgs_color'
 
 
-def batch_run(block_size, quant_coef, quant_threshold):
-    output_dir = 'color_{b}_{q}_{u}'.format(b=block_size, q=quant_coef, u=quant_threshold)
+def batch_run(block_size, quant_coef, quant_threshold, dc_quant_coef):
+    output_dir = 'color_{b}_{q}_{u}_{w}'.format(b=block_size, q=quant_coef, u=quant_threshold, w=dc_quant_coef)
 
     try:
         os.mkdir(output_dir)
@@ -23,6 +23,7 @@ def batch_run(block_size, quant_coef, quant_threshold):
             '-b', str(block_size),
             '-q', str(quant_coef),
             '-u', str(quant_threshold),
+            '-w', str(dc_quant_coef),
             '-c',
             os.path.join(input_dir, image),
             os.path.join(output_dir, image.replace('.png', '.j')),
@@ -34,6 +35,7 @@ def batch_run(block_size, quant_coef, quant_threshold):
             jj_path,
             '-b', str(block_size),
             '-q', str(quant_coef),
+            '-w', str(dc_quant_coef),
             '-d',
             os.path.join(output_dir, image.replace('.png', '.j')),
             os.path.join(output_dir, image)
@@ -70,8 +72,9 @@ def batch_run(block_size, quant_coef, quant_threshold):
 
 
 for b in [8]:
-    for q in [10, 20]: # [1, 2, 3, 10, 20]
-        for u in [512, 1024, 2048]:
-            print('Quantization threshold = %u' % (u,))
-            batch_run(b, q, u)
+    for w in [1, 5]:
+        for q in [1, 5, 10, 20]: # [1, 2, 3, 10, 20]
+            for u in [1024, 2048]:
+                print('Quantization threshold = %u' % (u,))
+                batch_run(b, q, u, w)
 

@@ -655,6 +655,7 @@ if __name__ == '__main__':
     # Parameters
     parser.add_argument('-b', '--block-size', default=8, help='Which block size to use for compression', type=int)
     parser.add_argument('-q', '--quant-coefficient', default=50, help='Quantization factor to use', type=float)
+    parser.add_argument('-w', '--dc-quant-coefficient', nargs='?', help='Quantization factor for AC coefficient', type=float)
     parser.add_argument('-u', '--quant-threshold', default=2000, help='Quantization threshold to use', type=float)
     parser.add_argument('-t', '--table', help='Quantization table preset to use when not using a quantization coefficient', type=str, choices=['default', 'all', 'ac_only'])
 
@@ -688,6 +689,10 @@ if __name__ == '__main__':
         quant_table = build_quant_table(args)
     else:
         quant_table = args.quant_coefficient * np.ones(shape=(chunk_size, chunk_size))
+
+        if args.dc_quant_coefficient is not None:
+            assert args.dc_quant_coefficient > 0
+            quant_table[0][0] = args.dc_quant_coefficient
 
     compressor = None
     if args.huffman_tree is not None:
